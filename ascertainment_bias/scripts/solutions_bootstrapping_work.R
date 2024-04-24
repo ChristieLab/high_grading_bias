@@ -1,5 +1,4 @@
 library(snpR)
-
 monarchs <- readRDS("data/monarch_nomaf.RDS")
 monarchs <- monarchs[pop = "NAM"]
 

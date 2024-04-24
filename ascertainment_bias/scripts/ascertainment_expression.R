@@ -14,6 +14,7 @@ samples$true_treat <- samples$treatment
 samples$treatment <- sample(LETTERS[1:2], nrow(samples), TRUE)
 
 
+
 ### examine response to temperature in each site -----------------------------##
 #----Sample processing ----#
 

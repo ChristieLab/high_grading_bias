@@ -10,6 +10,7 @@ high_fst <- snpR:::.paste.by.facet(fst$pairwise, c("group", "position"), "_")[hi
 high_fst <- match(high_fst,
                   snpR:::.paste.by.facet(snp.meta(monarchs), c("group", "position"), "_"))
 
+
 monarchs_high <- monarchs[high_fst,]
 monarchs_high <- calc_global_fst(monarchs_high, "pop")
 plot_clusters(monarchs_high, "pop")
