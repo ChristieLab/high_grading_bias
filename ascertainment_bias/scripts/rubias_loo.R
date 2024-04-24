@@ -2,7 +2,6 @@
 library(rubias); library(tidyverse); library(snpR)
         
 # setwd("~/assignment_power_analyses/data")
-
 args <- commandArgs(TRUE) 
 data <- readRDS(as.character(args[1]))
 outfile <- as.character(args[2])
