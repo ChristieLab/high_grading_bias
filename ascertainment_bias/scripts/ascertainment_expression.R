@@ -1,7 +1,5 @@
-
 ### Ascertainment Bias in expression data 
 ### Randomly shuffle treatments in TAE to test the effects
-
 
 gene.counts <- read.table("tae_genome_featureCount_counts.txt", sep="\t", header=T, row.names=1, check.names=F)
 drop.vars   <- names(gene.counts) %in% c("Chr","Start", "End", "Strand", "Length")
