@@ -20,4 +20,4 @@ err  <- forestError::quantForestError(rf_data, # the forest
                                       X.test =  data_sn[i,,drop=FALSE], # the test data
                                       Y.train = data_sites[-i])  # the classifications of the training data
 
-fwrite(data.frame(sample.meta(data)$pop[i], err), file = paste0(out, "_", i, ".txt"), row.names = FALSE, col.names = T, quote = FALSE, sep = "\t")
+fwrite(data.frame(sample.meta(data)$pop[i], err), file = paste0(out, "_", i, ".txt"), row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
