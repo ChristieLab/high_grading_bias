@@ -9,8 +9,6 @@ setwd("~/assignment_tests/ascertainment_bias/data")
 
 ## Standardize each data set 
 
-
-
 ###############################
 #### Testing high FST SNPs ####
 ###############################
@@ -28,7 +26,8 @@ get_high_fst <- function(rds, percent_highest){
   return(high_fst_rds)
 }
 
-monarchs <- readRDS("../../assignment_tests/assignment_tests/data/monarch_nomaf.RDS")
+## monarchs clean up
+monarchs <- readRDS("../../assignment_tests/data/monarch_nomaf.RDS")
 colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
 sample.meta(monarchs)$sampID <- gsub("\\.", "_", sample.meta(monarchs)$sampID)
 sample.meta(monarchs) <- sample.meta(monarchs)[,1:2]
@@ -44,3 +43,9 @@ saveRDS(monarch_nam_highfst, "monarch_nam_highfst.RDS")
 monarch_gr <- filter_snps(monarchs[pop = c("GUA", "ROT")], maf = 0.05, maf_facets= "pop")
 monarch_gr_highfst <- get_high_fst(monarch_gr, .95)
 saveRDS(monarch_gr, "monarch_gr_highfst.RDS")
+
+
+## randomly assign A-D to panmictic north america samples 
+monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05)
+sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
+saveRDS(monarchs_random, "monarch_nam_random.RDS")
