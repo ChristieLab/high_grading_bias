@@ -1,0 +1,89 @@
+---
+title: "Figure_1_problem"
+output: html_document
+date: "2024-05-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(snpR)
+```
+
+This script will produce Figure 1, which demonstrates the high-FST/ascertainment bias issue in PCA and other assignment/clustering approaches.
+
+# Pull in data
+
+We use monarch data from [this paper](doi.org/10.1111/mec.16592) to illustrate the overfitting problem created by taking high $F_{ST}$ loci when doing clustering/assignment testing. Specifically, we will use samples from: A) North America, divided randomly into two populations and B) Guam and Rota islands. The former should have no population structure, the latter should have strong population structure.
+
+```{r}
+set.seed(1232321)
+
+## monarchs clean up
+monarchs <- readRDS("../data/monarch_nomaf.RDS")
+colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
+sample.meta(monarchs)$sampID <- gsub("\\.", "_", sample.meta(monarchs)$sampID)
+sample.meta(monarchs) <- sample.meta(monarchs)[,1:2]
+
+## highly differentiated GUA and ROT samples 
+monarchs_gr <- filter_snps(monarchs[pop = c("GUA", "ROT")], maf = 0.05, min_ind = .75, min_loci = .75)
+
+## randomly assign A-D to panmictic north america samples 
+monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05, min_ind = .75, min_loci = .75)
+sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
+
+## save for later
+saveRDS(monarchs_gr, "../data/monarchs_gr.RDS")
+saveRDS(monarchs_random, "../data/monarchs_random.RDS")
+```
+
+# Grab high $F_{ST}$ loci
+
+Next, we will grab the highest (top 5%) $F_{ST}$ loci within each dataset.
+
+```{r}
+#### Monarch data for testing ascertainment bias using highly and non differentiated populations
+get_high_fst <- function(rds, percent_highest){
+  rds <- calc_global_fst(rds, "pop")
+  fst <- get.snpR.stats(rds, "pop", "fst")
+  high_fst <- which(fst$pairwise$fst >= quantile(fst$pairwise$fst, percent_highest, na.rm = TRUE))
+  high_fst <- snpR:::.paste.by.facet(fst$pairwise, c("group", "position"), "_")[high_fst]
+  high_fst <- match(high_fst,
+                    snpR:::.paste.by.facet(snp.meta(rds), c("group", "position"), "_"))
+  high_fst_rds <- rds[high_fst,]
+  return(high_fst_rds)
+}
+
+nam_high_fst <- get_high_fst(monarchs_random, 0.95)
+gr_high_fst <- get_high_fst(monarchs_gr, 0.95)
+```
+
+# Generate PCA, DAPC, UMAP, tSNE plots for the random data
+
+Next, generate plots using the various clustering approaches. All of these will go to the supplementary material aside from the PCA.
+
+For the NAM DAPC, use the following: 6 PCs, 4 clusters, 3 discriminants
+
+For the GUA/ROT DAPC, use the following: 6 PCs, 2 clusters, 1 discriminant
+
+
+```{r}
+generate_clusters <- function(rds,
+                              npca,
+                              nclust,
+                              ndisc){
+  plots <- plot_clusters(rds, "pop", plot_type = c("pca", "dapc", "tsne", "umap"),
+                         dapc_clustering_npca = npca, dapc_clustering_nclust = nclust, 
+                         dapc_npca = npca, dapc_ndisc = ndisc,
+                         dapc_clustering_max_n_clust = NULL,
+                         simplify_output = TRUE)
+  return(plots)
+}
+
+
+nam_rand_plots <- generate_clusters(monarchs_random, 6, 4, 2)
+nam_high_fst_plots <- generate_clusters(nam_high_fst, 6, 4, 2)
+gr_plots <- generate_clusters(monarchs_gr, 6, 2, 1)
+gr_high_fst_plots <- generate_clusters(gr_high_fst, 6, 2, 1)
+
+```
+
