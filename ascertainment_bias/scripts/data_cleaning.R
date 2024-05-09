@@ -4,6 +4,7 @@
 ### using snpR package 
 
 ### Load packages and setwd 
+# remotes::install_github("hemstrow/snpR", ref = "dev")
 library("snpR")
 setwd("~/assignment_tests/ascertainment_bias/data")
 
@@ -26,26 +27,34 @@ get_high_fst <- function(rds, percent_highest){
   return(high_fst_rds)
 }
 
-## monarchs clean up
-monarchs <- readRDS("../../assignment_tests/data/monarch_nomaf.RDS")
-colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
-sample.meta(monarchs)$sampID <- gsub("\\.", "_", sample.meta(monarchs)$sampID)
-sample.meta(monarchs) <- sample.meta(monarchs)[,1:2]
+monarchs_random <- readRDS("monarchs_random.RDS")
+monarchs_gr     <- readRDS("monarchs_gr.RDS")
 
-## panmictic north america samples 
-monarch_nam <- filter_snps(monarchs[pop = "NAM"], maf = 0.05, maf_facets= "pop")
-meta <- sample.meta(monarch_nam)
-sample.meta(monarch_nam)$pop <- ifelse(meta$samp == "NAM_M9.10" | grepl("_Mexico", meta$samp), "ENA", "WNA")
-monarch_nam_highfst <- get_high_fst(monarch_nam, .95)
-saveRDS(monarch_nam_highfst, "monarch_nam_highfst.RDS")
-
-## highly differentiated GUA and ROT samples 
-monarch_gr <- filter_snps(monarchs[pop = c("GUA", "ROT")], maf = 0.05, maf_facets= "pop")
-monarch_gr_highfst <- get_high_fst(monarch_gr, .95)
-saveRDS(monarch_gr, "monarch_gr_highfst.RDS")
+monarchs_random_highfst <- get_high_fst(monarchs_random)
 
 
-## randomly assign A-D to panmictic north america samples 
-monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05)
-sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
-saveRDS(monarchs_random, "monarch_nam_random.RDS")
+
+# ## monarchs clean up
+# monarchs <- readRDS("../../assignment_tests/data/monarch_nomaf.RDS")
+# colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
+# sample.meta(monarchs)$sampID <- gsub("\\.", "_", sample.meta(monarchs)$sampID)
+# sample.meta(monarchs) <- sample.meta(monarchs)[,1:2]
+# 
+# ## panmictic north america samples 
+# monarch_nam <- filter_snps(monarchs[pop = "NAM"], maf = 0.05, maf_facets= "pop")
+# meta <- sample.meta(monarch_nam)
+# sample.meta(monarch_nam)$pop <- ifelse(meta$samp == "NAM_M9.10" | grepl("_Mexico", meta$samp), "ENA", # "WNA")
+# monarch_nam_highfst <- get_high_fst(monarch_nam, .95)
+# saveRDS(monarch_nam_highfst, "monarch_nam_highfst.RDS")
+# 
+# ## highly differentiated GUA and ROT samples 
+# monarch_gr <- filter_snps(monarchs[pop = c("GUA", "ROT")], maf = 0.05, maf_facets= "pop")
+# monarch_gr_highfst <- get_high_fst(monarch_gr, .95)
+# saveRDS(monarch_gr, "monarch_gr_highfst.RDS")
+# 
+# 
+# ## randomly assign A-D to panmictic north america samples 
+# monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05)
+# sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
+# saveRDS(monarchs_random, "monarch_nam_random.RDS")
+# 
