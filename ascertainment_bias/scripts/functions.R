@@ -1,5 +1,6 @@
 global_fst <- function(x, ac_cols = c("A", "C", "G", "T")){
   x <- as.data.table(x)
+  ac_cols <- ac_cols[which(ac_cols %in% colnames(x))]
   nt <- data.table::dcast(x[,rowSums(.SD), .SDcols = ac_cols, by = .(subfacet, .snp.id)], .snp.id ~ subfacet, value.var = "V1")
   psm <- x[,.SD/rowSums(.SD), .SDcols = ac_cols, by = .(subfacet, .snp.id)]
   ntotm <- nt/2
