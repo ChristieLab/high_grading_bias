@@ -29,12 +29,16 @@ get_high_fst <- function(rds, percent_highest){
 
 monarchs_random <- readRDS("monarchs_random.RDS")
 monarchs_gr     <- readRDS("monarchs_gr.RDS")
+sim_cryptic     <- readRDS("cryptic_genotypes.RDS")
 
 monarchs_random_highfst <- get_high_fst(monarchs_random, .95)
-monarchs_gr_highfst <- get_high_fst(monarchs_gr, .95)
+monarchs_gr_highfst     <- get_high_fst(monarchs_gr, .95)
+sim_cryptic_highfst     <- get_high_fst(sim_cryptic, .95)
 
 saveRDS(monarchs_random_highfst, "monarchs_random_highfst.RDS")
-saveRDS(monarchs_gr_highfst, "monarchs_gr_highfst.RDS")
+saveRDS(monarchs_gr_highfst,     "monarchs_gr_highfst.RDS")
+saveRDS(sim_cryptic_highfst ,    "sim_cryptic_highfst.RDS")
+
 # ## monarchs clean up
 # monarchs <- readRDS("../../assignment_tests/data/monarch_nomaf.RDS")
 # colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
@@ -58,4 +62,3 @@ saveRDS(monarchs_gr_highfst, "monarchs_gr_highfst.RDS")
 # monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05)
 # sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
 # saveRDS(monarchs_random, "monarch_nam_random.RDS")
-# 
