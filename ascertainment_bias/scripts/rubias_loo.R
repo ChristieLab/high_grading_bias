@@ -14,7 +14,7 @@ rubias_data_setup <- function(data){
   sample.meta(data)$indiv              <- sample.meta(data)[,1]
   # collection populations
   data_rafm <- format_snps(data, facets="indiv", "rafm") 
-  data_rafm$collection         <- sample.meta(data)[,2]
+  data_rafm$collection         <- as.character(sample.meta(data)[,2])
   data_rafm$sample_type        <- "reference"
   data_rafm$repunit            <- "NA" # NA as we are just using the
   data_rafm <- data_rafm %>%

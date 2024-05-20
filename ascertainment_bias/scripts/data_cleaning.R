@@ -10,12 +10,8 @@ setwd("~/assignment_tests/ascertainment_bias/data")
 
 ## Standardize each data set 
 
-###############################
-#### Testing high FST SNPs ####
-###############################
 
-
-#### Monarch data for testing ascertainment bias using highly and non differentiated populations
+#### function to get highest fst snps 
 get_high_fst <- function(rds, percent_highest){
   rds <- calc_global_fst(rds, "pop")
   fst <- get.snpR.stats(rds, "pop", "fst")
@@ -27,11 +23,15 @@ get_high_fst <- function(rds, percent_highest){
   return(high_fst_rds)
 }
 
+#### Monarch data for testing ascertainment bias using highly and non differentiated populations
 monarchs_random <- readRDS("monarchs_random.RDS")
 monarchs_gr     <- readRDS("monarchs_gr.RDS")
+
 sim_cryptic     <- readRDS("cryptic_genotypes.RDS")
   sample.meta(sim_cryptic)$sampID <- rownames(sample.meta(sim_cryptic)) # standardize sample meta names 
   sample.meta(sim_cryptic) <- sample.meta(sim_cryptic)[,c(3,1)]
+  sample.meta(sim_cryptic)$pop <- as.character(sample.meta(sim_cryptic)$pop)
+  saveRDS(sim_cryptic,    "sim_cryptic.RDS")
   
 monarchs_random_highfst <- get_high_fst(monarchs_random, .95)
 monarchs_gr_highfst     <- get_high_fst(monarchs_gr, .95)
