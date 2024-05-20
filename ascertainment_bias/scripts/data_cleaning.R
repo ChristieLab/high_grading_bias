@@ -30,7 +30,9 @@ get_high_fst <- function(rds, percent_highest){
 monarchs_random <- readRDS("monarchs_random.RDS")
 monarchs_gr     <- readRDS("monarchs_gr.RDS")
 sim_cryptic     <- readRDS("cryptic_genotypes.RDS")
-
+  sample.meta(sim_cryptic)$sampID <- rownames(sample.meta(sim_cryptic)) # standardize sample meta names 
+  sample.meta(sim_cryptic) <- sample.meta(sim_cryptic)[,c(3,1)]
+  
 monarchs_random_highfst <- get_high_fst(monarchs_random, .95)
 monarchs_gr_highfst     <- get_high_fst(monarchs_gr, .95)
 sim_cryptic_highfst     <- get_high_fst(sim_cryptic, .95)
