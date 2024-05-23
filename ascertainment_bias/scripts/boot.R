@@ -13,4 +13,4 @@ cat("iter:", iter, "\n")
 
 tres <- run_bootstrapping(d, "pop", n = 10, par = 10, store_pca = FALSE, fst_cut = 0.95)
 
-saveRDS(tres, paste0(outfile, "_boot_r_", i, ".RDS"))
+saveRDS(tres, paste0(outfile, "_boot_r_", iter, ".RDS"))
