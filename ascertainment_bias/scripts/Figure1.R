@@ -9,8 +9,6 @@ library("snpR")
 library("ggplot2")
 library(tidyverse)
 
-
-
 ## read in cleaned up RDS objects
 monarchs_random_allsnps <- readRDS("monarchs_random.RDS")
 monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
