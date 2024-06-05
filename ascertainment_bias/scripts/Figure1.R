@@ -9,14 +9,23 @@ library("snpR")
 library("ggplot2")
 library(tidyverse)
 
+<<<<<<< HEAD
+=======
+
+monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
+
+>>>>>>> 557444d60643b58c3e52a1a343628571b36f773d
 ## read in cleaned up RDS objects
 monarchs_random_allsnps <- readRDS("monarchs_random.RDS")
 monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
 
+<<<<<<< HEAD
 
 ## Set colors
 monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
 
+=======
+>>>>>>> 557444d60643b58c3e52a1a343628571b36f773d
 ## plot PCAs for figure 1 
 pca_all  <- plot_clusters(monarchs_random_allsnps, "pop", "pca", alt.palette = monarch_colors)
 pca_high <- plot_clusters(monarchs_random_highfst, "pop", "pca", alt.palette = monarch_colors)
