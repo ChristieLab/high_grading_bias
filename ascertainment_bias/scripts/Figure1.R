@@ -9,34 +9,27 @@ library("snpR")
 library("ggplot2")
 library(tidyverse)
 
-<<<<<<< HEAD
-=======
 
-monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
-
->>>>>>> 557444d60643b58c3e52a1a343628571b36f773d
 ## read in cleaned up RDS objects
 monarchs_random_allsnps <- readRDS("monarchs_random.RDS")
 monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
 
-<<<<<<< HEAD
-
 ## Set colors
 monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
 
-=======
->>>>>>> 557444d60643b58c3e52a1a343628571b36f773d
 ## plot PCAs for figure 1 
 pca_all  <- plot_clusters(monarchs_random_allsnps, "pop", "pca", alt.palette = monarch_colors)
 pca_high <- plot_clusters(monarchs_random_highfst, "pop", "pca", alt.palette = monarch_colors)
 
 
 ## plot STRUCTURE for fig 1 
-struc <- plot_structure(monarchs_high, "pop", 
-                        method = "structure", 
-                        structure_path = "/usr/bin/structure.exe",
-                        k = 2:4, iterations = 500, burnin = 100)
+structure_all <- read.table("../results/structure/all_sites_structure_res/pop_K4-combined-merged.txt", row.names = 1)
 
+plot_structure(structure_all[,1:4], k = 4, facet = sample.meta(monarchs_random_allsnps)$pop)
+
+
+plot_structure("../results/structure/high_fst_structure_res//pop_K4-combined-merged.txt", k = 4, facet = sample.meta(monarchs_random_highfst)$pop)
+?plot_structure
 
 ## plot RUBIAS results for figure 1 
 rubias_all  <- read.table("../results/rubias/monarchs_random_rubias.txt", header = 1)
