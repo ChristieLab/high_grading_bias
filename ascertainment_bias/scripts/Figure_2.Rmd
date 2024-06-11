@@ -1,0 +1,142 @@
+---
+title: "Figure_2_solution"
+output: html_document
+date: "2024-05-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(snpR); library(ggplot2); library(cowplot); source("functions.R")
+
+# subfuncs
+get_high_fst <- function(x, cut){
+  x <- calc_global_fst(x, "pop")
+  fst <- x@pairwise.stats[facet == "pop" & comparison == ".GLOBAL"]
+  high_fst <- which(fst$fst >= quantile(fst$fst, cut, na.rm = TRUE))
+  
+  total_fst <- get.snpR.stats(x, "pop", "fst")$weighted.means$mean_fst
+  
+  x_high <- x[which(snp.meta(x)$.snp.id %in% fst$.snp.id[high_fst]),]
+  
+  return(list(x = x_high, total_fst = total_fst))
+}
+
+plot_pca <- function(x) {
+  return(ggplot(x$data$pca, aes(x = PC1, y = PC2, color = pop)) +
+           geom_point(show.legend = FALSE) +
+           theme_bw() +
+           xlab(paste0("PC1 (", round(x$pca_loadings[1]/sum(x$pca_loadings)*100, 2), "%)")) +
+           ylab(paste0("PC2 (", round(x$pca_loadings[2]/sum(x$pca_loadings)*100, 2), "%)")) +
+           scale_color_manual(values = monarch_colors))
+}
+
+plot_density <- function(x){
+  return(ggplot(x$null, aes(x = delta_Fstat)) +
+           geom_density(color = monarch_colors[[4]]) +
+           geom_vline(xintercept = x$observed$delta_Fstat, color = monarch_colors[[2]]) +
+           theme_bw() +
+           xlab(bquote(Delta*italic(F))) +
+           ylab("Density"))
+}
+
+monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
+
+```
+
+# read in boot data
+```{r}
+keys <- c("cryptic", "monarchs_random", "monarchs_gr")
+files <- lapply(keys, function(x) list.files("../results/PCA_boots/", x, full.names = TRUE))
+res <- lapply(files, parse_boot_res)
+p <- purrr::map(res, "p")
+plots <- purrr::map(res, "plot")
+```
+
+# prep PCAs
+```{r}
+# random
+rand <- readRDS("../data/monarchs_random.RDS")
+t_a_PCA_rand <- plot_clusters(rand, "pop")
+rand_high <- get_high_fst(rand, .95)
+t_h_PCA_rand <- plot_clusters(rand_high$x, "pop")
+
+# island
+island <- readRDS("../data/monarchs_gr.RDS")
+t_a_PCA_island <- plot_clusters(island, "pop")
+island_high <- get_high_fst(island, .95)
+t_h_PCA_island <- plot_clusters(island_high$x, "pop")
+
+# cryptic
+cryptic <- readRDS("../data/sim_cryptic.RDS")
+t_a_PCA_cryptic <- plot_clusters(cryptic, "pop")
+cryptic_high <- get_high_fst(cryptic, .95)
+t_h_PCA_cryptic <- plot_clusters(cryptic_high$x, "pop")
+
+
+```
+# distribution of F-stats
+```{r}
+rand_delta <- ggplot(res[[2]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[2]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw()
+
+island_delta <- ggplot(res[[3]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[3]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw()
+
+cryptic_delta <- ggplot(res[[1]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[1]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw()
+
+```
+
+# make Fig 2
+```{r}
+
+adjust_PCA_plots <- function(tplot){
+  tplot <- tplot +
+    guides(color = "none") +
+    scale_x_continuous(labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
+    theme(axis.title = element_text(size = 14),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 20)) +
+    scale_color_manual(values = monarch_colors)
+  return(tplot)
+}
+
+adjust_density_plots <- function(tplot){
+  tplot <- tplot +
+    scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
+    theme(axis.title = element_text(size = 14),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 20)) +
+    ylab("Density") +
+    xlab(expression(Delta * italic(F)))
+  return(tplot)
+}
+
+
+Figure2 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand$plots$pca) + 
+                       ggtitle("All SNPs"),
+                     adjust_PCA_plots(t_h_PCA_rand$plots$pca)+ 
+                       ggtitle(expression('Top' * ' ' * '5%' * ' ' *italic("F")[ST])),
+                     adjust_density_plots(rand_delta) + 
+                       ggtitle("Clustering Improvement"),
+                     
+                     adjust_PCA_plots(t_a_PCA_island$plots$pca) ,
+                     adjust_PCA_plots(t_h_PCA_island$plots$pca),
+                     adjust_density_plots(island_delta),
+                     
+                     adjust_PCA_plots(t_a_PCA_cryptic$plots$pca) ,
+                     adjust_PCA_plots(t_h_PCA_cryptic$plots$pca),
+                     adjust_density_plots(cryptic_delta),
+                     
+                     ncol = 3)
+
+save_plot("../results/Figure2.pdf", Figure2, base_width = 15, base_height = 11)
+```
+
