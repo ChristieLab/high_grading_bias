@@ -6,10 +6,10 @@
 #SBATCH -N 1
 #SBATCH -n 10
 #SBATCH -t 4:00:00
-#SBATCH --output slurm_boot_pca_%A_%a.out
+#SBATCH --output ./slurm_files/slurm_boot_pca_%A_%a.out
 module purge
 module load r/4.2
 
-data=../data/sim_cryptic.RDS
-out=cryptic
+data=../data/island_sim.RDS
+out=island_redo
 Rscript boot.R $data $out $SLURM_ARRAY_TASK_ID
