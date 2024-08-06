@@ -38,14 +38,15 @@ plot_density <- function(x){
            xlab(bquote(Delta*italic(F))) +
            ylab("Density"))
 }
-
-monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
+colours <- khroma::color("batlow")
+monarch_colors <- colours(4, range=c(0.1,0.8))
+# monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
 
 ```
 
 # read in boot data
 ```{r}
-keys <- c("cryptic", "monarchs_random", "monarchs_gr")
+keys <- c("candidate_cryptic_multi_101_boot", "ms_boot", "island_redo")
 files <- lapply(keys, function(x) list.files("../results/PCA_boots/", x, full.names = TRUE))
 res <- lapply(files, parse_boot_res)
 p <- purrr::map(res, "p")
@@ -55,19 +56,19 @@ plots <- purrr::map(res, "plot")
 # prep PCAs
 ```{r}
 # random
-rand <- readRDS("../data/monarchs_random.RDS")
+rand <- readRDS("../data/ms_out_1.RDS")
 t_a_PCA_rand <- plot_clusters(rand, "pop")
 rand_high <- get_high_fst(rand, .95)
 t_h_PCA_rand <- plot_clusters(rand_high$x, "pop")
 
 # island
-island <- readRDS("../data/monarchs_gr.RDS")
+island <- readRDS("../data/island_sim.RDS")
 t_a_PCA_island <- plot_clusters(island, "pop")
 island_high <- get_high_fst(island, .95)
 t_h_PCA_island <- plot_clusters(island_high$x, "pop")
 
 # cryptic
-cryptic <- readRDS("../data/sim_cryptic.RDS")
+cryptic <- readRDS("../data/candidate_cryptic_multi_101.RDS")
 t_a_PCA_cryptic <- plot_clusters(cryptic, "pop")
 cryptic_high <- get_high_fst(cryptic, .95)
 t_h_PCA_cryptic <- plot_clusters(cryptic_high$x, "pop")
@@ -98,7 +99,8 @@ cryptic_delta <- ggplot(res[[1]]$null, aes(x = delta_Fstat)) +
 
 adjust_PCA_plots <- function(tplot){
   tplot <- tplot +
-    guides(color = "none") +
+    guides(color = "none",) +
+    geom_point(size = 2, aes(color = pop)) +
     scale_x_continuous(labels = function(x) sprintf("%.2f", x)) +
     scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
     theme(axis.title = element_text(size = 14),
@@ -120,21 +122,40 @@ adjust_density_plots <- function(tplot){
 }
 
 
-Figure2 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand$plots$pca) + 
-                       ggtitle("All SNPs"),
-                     adjust_PCA_plots(t_h_PCA_rand$plots$pca)+ 
-                       ggtitle(expression('Top' * ' ' * '5%' * ' ' *italic("F")[ST])),
-                     adjust_density_plots(rand_delta) + 
-                       ggtitle("Clustering Improvement"),
+# Figure2 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand$plots$pca) + 
+#                        ggtitle("All SNPs"),
+#                      adjust_PCA_plots(t_h_PCA_rand$plots$pca)+ 
+#                        ggtitle(expression('Top' * ' ' * '5%' * ' ' *italic("F")[ST])),
+#                      adjust_density_plots(rand_delta) + 
+#                        ggtitle("Clustering Improvement"),
+#                      
+#                      adjust_PCA_plots(t_a_PCA_island$plots$pca) ,
+#                      adjust_PCA_plots(t_h_PCA_island$plots$pca),
+#                      adjust_density_plots(island_delta),
+#                      
+#                      adjust_PCA_plots(t_a_PCA_cryptic$plots$pca) ,
+#                      adjust_PCA_plots(t_h_PCA_cryptic$plots$pca),
+#                      adjust_density_plots(cryptic_delta),
+#                      
+#                      ncol = 3)
+
+
+Figure2 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand$plots$pca) + # row 1: all
+                       ggtitle("Panmictic"),
+                     adjust_PCA_plots(t_a_PCA_island$plots$pca) +
+                       ggtitle("Islands"),
+                     adjust_PCA_plots(t_a_PCA_cryptic$plots$pca) +
+                       ggtitle("Cryptic"),
                      
-                     adjust_PCA_plots(t_a_PCA_island$plots$pca) ,
+                     # row 2: top 5%
+                     adjust_PCA_plots(t_h_PCA_rand$plots$pca),
                      adjust_PCA_plots(t_h_PCA_island$plots$pca),
-                     adjust_density_plots(island_delta),
-                     
-                     adjust_PCA_plots(t_a_PCA_cryptic$plots$pca) ,
                      adjust_PCA_plots(t_h_PCA_cryptic$plots$pca),
-                     adjust_density_plots(cryptic_delta),
                      
+                     # row 3: clustering improvement
+                     adjust_density_plots(rand_delta),
+                     adjust_density_plots(island_delta),
+                     adjust_density_plots(cryptic_delta),
                      ncol = 3)
 
 save_plot("../results/Figure2.pdf", Figure2, base_width = 15, base_height = 11)
