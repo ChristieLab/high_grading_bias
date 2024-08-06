@@ -8,15 +8,19 @@ setwd("~/assignment_tests/ascertainment_bias/data")
 library("snpR")
 library("ggplot2")
 library(tidyverse)
-
+library(khroma)
 ## read in cleaned up RDS objects
 monarchs_random_allsnps <- readRDS("monarchs_random.RDS")
 monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
 
 ## Set colors
-monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
+colours <- color("batlow")
+monarch_colors <- colours(4, range=c(0.1,0.8))
 
-## plot PCAs for figure 1 
+lajolla <- color("lajolla")
+
+plot_scheme(lajolla(10), colours = TRUE)
+# plot PCAs for figure 1 
 pca_all  <- plot_clusters(monarchs_random_allsnps, "pop", "pca", alt.palette = monarch_colors)
 
 pca_all$plots$pca <- pca_all$plots$pca + 
@@ -27,10 +31,10 @@ pca_high <- plot_clusters(monarchs_random_highfst, "pop", "pca", alt.palette = m
 
 ## plot STRUCTURE for fig 1 
 setwd("~/assignment_tests/ascertainment_bias/results/structure/all_sites_structure_res/")
-structure_allsnps <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_allsnps)$pop, alt.palette = monarch_colors, facet.order = c("A", "B", "C", "D"))
+structure_allsnps <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_allsnps)$pop, alt.palette = monarch_colors[c(1,3,2,4)], facet.order = c("A", "B", "C", "D"))
 
 setwd("~/assignment_tests/ascertainment_bias/results/structure/high_fst_structure_res/")
-structure_highfst <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_highfst)$pop, alt.palette = monarch_colors, facet.order = c("A", "B", "C", "D"))
+structure_highfst <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_highfst)$pop, alt.palette = monarch_colors[c(1,3,2,4)], facet.order = c("A", "B", "C", "D"))
 
 ## plot RUBIAS results for figure 1 
 rubias_all  <- read.table("~/assignment_tests/ascertainment_bias/results/rubias/monarchs_random_rubias.txt", header = 1)
@@ -80,12 +84,14 @@ figure_1 <- plot_grid(
     guides(fill="none", color="none") + 
     xlab("Randomly Assigned Population") + 
     theme(axis.text = element_text(angle=0, size=12), 
+          axis.text.x = element_text(angle=0),
           axis.title = element_text(size=14)),
   
   structure_highfst$plot + 
     guides(fill="none", color="none") + 
     xlab("Randomly Assigned Population") + 
-    theme(axis.text = element_text(angle=0, size=12), 
+    theme(axis.text = element_text(size=12), 
+          axis.text.x = element_text(angle=0),
           axis.title = element_text(size=14)),
   mid_lg,
   
@@ -104,7 +110,7 @@ figure_1 <- plot_grid(
   btm_lg,
   ncol = 3, axis = "tr", align="hv", rel_widths =c(1,1,.3)
 )
-
+figure_1
 save_plot("~/assignment_tests/ascertainment_bias/results/Figure1.PDF", figure_1,  base_height = 11, base_width = 15)
 
 ## plot other methods for SI 
@@ -119,3 +125,4 @@ struc <- plot_structure(monarchs_high, "pop",
                         method = "snapclust", 
                         structure_path = "/usr/bin/structure.exe",
                         k = 2:4, iterations = 500, burnin = 100)
+
