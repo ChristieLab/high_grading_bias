@@ -1,24 +1,32 @@
 ### Ascertainment Bias in expression data 
-### Randomly shuffle treatments in TAE to test the effects
+### Randomly assign treatments using common garden whelks to test the effects of high gradning bias 
+### written by andy lee
+### last edited 8/9/2024
+library(DESeq2)
+library("rtracklayer")
+library(ggplot2)0
 
-gene.counts <- read.table("tae_genome_featureCount_counts.txt", sep="\t", header=T, row.names=1, check.names=F)
+
+gene.counts <- read.table("KW/common_garden_cross/3_deg_pipeline/rnasapdes_annotated/featureCount_counts.txt", sep="\t", header=T, row.names=1, check.names=F)
 drop.vars   <- names(gene.counts) %in% c("Chr","Start", "End", "Strand", "Length")
 gene.counts <- gene.counts[!drop.vars]
 head(gene.counts)
 
-samples <- read.csv("../tae_sample_info.csv")
-rownames(samples) <- samples$sample_bam
+samples <- read.csv("KW/common_garden_cross/4_DESeq2/annotated_rnaspades/kw_sample_info.csv")
+
+rownames(samples) <- samples$sample_ID
 all(rownames(samples) == colnames(gene.counts)) # should be TRUE 
 
-samples$true_treat <- samples$treatment
-samples$treatment <- sample(LETTERS[1:2], nrow(samples), TRUE)
+samples$treatment <- sample(LETTERS[1:2], nrow(samples), TRUE) # randomly assign treatments
 
 
 
 ### examine response to temperature in each site -----------------------------##
 #----Sample processing ----#
 
-site <- which(samples$site == "NAP") 
+site <- which(samples$site == "MON") # use the largest pop from Lee et al 2024 
+
+site <- sample(site, 6)
 site.meta   <- samples[site, ] 
 site.genecounts <- gene.counts[, site]
 
@@ -33,7 +41,7 @@ dds.site
 
 ## gene names 
 # renames genes in a DESeqDataSet to match gene names in the reference annotation (i.e., replaces MSTRG wherever gene name is known)
-assembly <- readGFF("tae_all_merged_genome.gtf")             ## read in merged GTF
+assembly <- readGFF("KW/common_garden_cross/4_DESeq2/annotated_rnaspades/stringtie_all_merged_kw.gtf")             ## read in merged GTF
 gene_idx <- match(dds.site@rowRanges@partitioning@NAMES, assembly$gene_id)
 
 # create gene_names, which is a table linking gene name, transcript ID, and xloc information for later distinguishing different isoforms of the same gene (same gene start and end) and transcripts generated from different paralogs of the same gene (by xloc)
@@ -54,9 +62,8 @@ summary(res.site)
 
 
 ## TEST CODE
-top_lfc <- which(abs(res.site$log2FoldChange) > quantile(abs(res.site$log2FoldChange), .95, na.rm = T)) 
-
-top_lfc <- which(abs(res.site$log2FoldChange) > quantile(abs(res.site$log2FoldChange), .99999, na.rm = T)) 
+top_lfc <- which(abs(res.site$log2FoldChange) > quantile(abs(res.site$log2FoldChange), .995, na.rm = T)) 
+top_lfc <- order(abs(res.site$log2FoldChange))
 
 top_lfc_vst <- varianceStabilizingTransformation(dds.site[top_lfc, ])
 

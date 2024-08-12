@@ -17,7 +17,6 @@ monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
 colours <- color("batlow")
 monarch_colors <- colours(4, range=c(0.1,0.8))
 
-lajolla <- color("lajolla")
 
 plot_scheme(lajolla(10), colours = TRUE)
 # plot PCAs for figure 1 
@@ -111,7 +110,7 @@ figure_1 <- plot_grid(
   ncol = 3, axis = "tr", align="hv", rel_widths =c(1,1,.3)
 )
 figure_1
-save_plot("~/assignment_tests/ascertainment_bias/results/Figure1.PDF", figure_1,  base_height = 11, base_width = 15)
+save_plot("~/assignment_tests/ascertainment_bias/results/Figure1.pdf", figure_1,  base_height = 11, base_width = 15)
 
 ## plot other methods for SI 
 plot_clusters(monarchs_high, "pop", "tsne")
