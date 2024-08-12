@@ -17,7 +17,6 @@ monarchs_random_highfst <- readRDS("monarchs_random_highfst.RDS")
 colours <- color("batlow")
 monarch_colors <- colours(4, range=c(0.1,0.8))
 
-lajolla <- color("lajolla")
 
 plot_scheme(lajolla(10), colours = TRUE)
 # plot PCAs for figure 1 
