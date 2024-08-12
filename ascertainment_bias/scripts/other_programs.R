@@ -11,6 +11,7 @@ panmictic <- calc_global_fst(panmictic, "pop")
 fst <- get.snpR.stats(panmictic, "pop", "fst")
 high_fst <- which(fst$pairwise$fst >= quantile(fst$pairwise$fst, .95, na.rm = TRUE))
 
+set.seed(527615)
 samp <- sample(nrow(panmictic), 15000, replace = FALSE)
 panmictic_sub <- panmictic[samp, ]
 
@@ -20,20 +21,20 @@ saveRDS(panmictic.top <- panmictic[high_fst,], "ms_out_1_highfst.RDS")
 
 
 ## Set colors
-colours <- color("batlow")
+colours <- khroma::color("batlow")
 manual_colors <- colours(4, range=c(0.1,0.8))
 
 ### all SNPs 
 p1 <- plot_clusters(panmictic_sub, "pop", alt.palette = manual_colors, plot_type = "tSNE")
 p2 <- plot_clusters(panmictic_sub, "pop", alt.palette = manual_colors, plot_type = "umap")
 p3 <- plot_clusters(panmictic_sub, "pop", alt.palette = manual_colors, plot_type = "dapc")
-p4 <- plot_structure(panmictic_sub, "pop", alt.palette = manual_colors, method = "snmf", k = 2:4, iterations =100000)
+p4 <- plot_structure(panmictic_sub, "pop", alt.palette = manual_colors, method = "snmf", k = 2:4)
 
 ### high fst 
 p6 <- plot_clusters(panmictic.top, "pop", alt.palette = manual_colors,  plot_type = "tSNE")
 p7 <- plot_clusters(panmictic.top, "pop", alt.palette = manual_colors,  plot_type = "umap")
 p8 <- plot_clusters(panmictic.top, "pop", alt.palette = manual_colors,  plot_type = "dapc") #300, 4, 300, 3, 
-p9 <- plot_structure(panmictic.top, "pop", alt.palette = manual_colors, method = "snmf", k = 2:4, iterations = 100000)
+p9 <- plot_structure(panmictic.top, "pop", alt.palette = manual_colors, method = "snmf", k = 2:4)
 
 
 
