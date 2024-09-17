@@ -29,15 +29,11 @@ all(rownames(site.meta) %in% colnames(site.genecounts)) # check sample names are
 all(rownames(site.meta) == colnames(site.genecounts)) # must  be TRUE or do not proceed
 
 
-# randomly assign treatments
-
-
-
 
 # create a function to run DESeq2 
 run_deseq <- function(x){
   set.seed(x)
-  site.meta$treatment <- sample(LETTERS[1:2], nrow(site.meta), TRUE) 
+  site.meta$treatment <- sample(LETTERS[1:2], nrow(site.meta), TRUE) # randomly assign treatments
   dds.site <- DESeqDataSetFromMatrix(countData = site.genecounts,
                                      colData = site.meta,
                                      design = ~treatment) 
