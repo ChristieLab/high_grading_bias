@@ -28,8 +28,11 @@ site.genecounts <- gene.counts[, site]
 all(rownames(site.meta) %in% colnames(site.genecounts)) # check sample names are in the same order in the gene count sample info table
 all(rownames(site.meta) == colnames(site.genecounts)) # must  be TRUE or do not proceed
 
+write.csv(site.meta, "data/cge_mon_sitemeta.csv")
+write.table(site.genecounts, "data/cge_mon_genecounts.txt")
 
 
+read.table("data/cge_mon_genecounts.txt") 
 # create a function to run DESeq2 
 run_deseq <- function(x){
   set.seed(x)
@@ -61,11 +64,7 @@ run_deseq <- function(x){
 
 # run deseq with 5 different set.seed randomly chosen 
 
-run1 <- run_deseq(981934)
-run2 <- run_deseq(848297)
-run3 <- run_deseq(756935)
-run4 <- run_deseq(252754)
-run5 <- run_deseq(837214)
+run1 <- run_deseq(0420)
 
 ## get "top 1000 loci" 
 get_top_loci <- function(dds){
@@ -75,13 +74,6 @@ get_top_loci <- function(dds){
   return(top_lfc_vst)
 }
 
-run1_vst <- get_top_loci(run1)
-run2_vst <- get_top_loci(run2)
-run3_vst <- get_top_loci(run3)
-run4_vst <- get_top_loci(run4)
-run5_vst <- get_top_loci(run5)
-
- 
 ### get statistically significant genes 
 get_sig_genes <- function(dds){
   res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
@@ -89,11 +81,13 @@ get_sig_genes <- function(dds){
   print(res[which(res$padj < 0.05),])
   cge_sig_vst <- varianceStabilizingTransformation(sig_cge_genes)
 }
+
+
+run1_vst <- varianceStabilizingTransformation(run1)
+run1_top1k_vst <- get_top_loci(run1)
 run1_sig_vst <- get_sig_genes(run1)
-run2_sig_vst <- get_sig_genes(run2)
-run3_sig_vst <- get_sig_genes(run3)
-run4_sig_vst <- get_sig_genes(run4) # no significant DEGs
-run5_sig_vst <- get_sig_genes(run5) # no significant DEGs
+
+
 
 ## plot PCAs 
 plot_pcas <- function(top_lfc_vst){
@@ -110,32 +104,18 @@ plot_pcas <- function(top_lfc_vst){
     coord_fixed()
 }
 
-p_run1 <- plot_pcas(run1_vst)
-p_run2 <- plot_pcas(run2_vst)
-p_run3 <- plot_pcas(run3_vst)
-p_run4 <- plot_pcas(run4_vst)
-p_run5 <- plot_pcas(run5_vst)
-p_run1_sig <- plot_pcas(run1_sig_vst)
-p_run2_sig <- plot_pcas(run2_sig_vst)
-p_run3_sig <- plot_pcas(run3_sig_vst)
-p_run4_sig <- NULL
-p_run5_sig <- NULL
+p1 <- plot_pcas(run1_vst)
+p2 <- plot_pcas(run1_top1k_vst)
+p3 <- plot_pcas(run1_sig_vst)
 
 ggsave(
   "testplot.svg", 
   cowplot::plot_grid(
-    p_run1 + theme(legend.position="none"),
-    p_run1_sig + theme(legend.position="none"), 
-    p_run2 + theme(legend.position="none"), 
-    p_run2_sig + theme(legend.position="none"),
-    p_run3 + theme(legend.position="none"),
-    p_run3_sig + theme(legend.position="none"), 
-    p_run4 + theme(legend.position="none"),
-    p_run4_sig,
-    p_run5 + theme(legend.position="none"), 
-    p_run5_sig, 
-    ncol = 2, 
-    # labels=c("Top 1000 DEGs", "Outlier DEGs"), 
+    p1 + theme(legend.position="none"),
+    p2 + theme(legend.position="none"), 
+    p3, 
+    nrow = 1, 
+    labels=c("All DEGs","Top 1000 DEGs", "Outlier DEGs"), 
     align="hv"
   )
 )
