@@ -88,7 +88,6 @@ run1_top1k_vst <- get_top_loci(run1)
 run1_sig_vst <- get_sig_genes(run1)
 
 
-
 ## plot PCAs 
 plot_pcas <- function(top_lfc_vst){
   plot.all.data <- plotPCA(top_lfc_vst, intgroup = "treatment", returnData=TRUE)
