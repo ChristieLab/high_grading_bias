@@ -54,7 +54,6 @@ run_deseq <- function(treatment){
   dds.site <- DESeq(dds.site)
   return(dds.site)
 }
-
 get_top_loci <- function(dds){
   res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
   top_lfc2 <- dds[order(abs(res$log2FoldChange), decreasing = TRUE), ][1:1000,]

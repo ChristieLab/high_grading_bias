@@ -1,0 +1,220 @@
+library(ggplot2)
+library(ggridges)
+library(DESeq2)
+
+setwd("~/assignment_tests/ascertainment_bias/results/expression_boot/")
+temp  <- list.files(pattern = "\\.RDS")
+first50 <-  lapply(temp[1:50], readRDS)
+
+## get f stat for first half
+fstat_top_first50 <- first50 |> purrr::map(1) 
+fstat_top_first50 <- unlist(fstat_top_first50)
+
+fstat_sig_first50 <- first50 |> purrr::map(2) 
+fstat_sig_first50[sapply(fstat_sig_first50, is.null)] <- NA # keeps all the NULL results
+fstat_sig_first50 <- unlist(fstat_sig_first50)
+
+# first_gene_names <- first50 |> purrr::map(3) ## get deseq obj for first half 
+# last_gene_names <- last50 |> purrr::map(3) 
+## get f stat for second half 
+last50   <- lapply(temp[51:100], readRDS)
+
+fstat_top_last50 <- last50 |> purrr::map(1) 
+fstat_top_last50 <- unlist(fstat_top_last50)
+
+fstat_sig_last50 <- last50 |> purrr::map(2) 
+fstat_sig_last50[sapply(fstat_sig_last50, is.null)] <- NA
+fstat_sig_last50 <- unlist(fstat_sig_last50) 
+
+## combine the 2 chunks 
+fstat_top  <- c(fstat_top_first50, fstat_top_last50)
+fstat_sig  <- c(fstat_sig_first50, fstat_sig_last50)
+fstat_sig[sapply(fstat_sig, is.na)] <- 0
+sum(is.na(fstat_sig) == TRUE) ## How many runs did not ID outliers 
+
+d1 <- data.frame(fstat = fstat_top, loci = "Top 1000 DEGs")
+d2 <- data.frame(fstat = fstat_sig, loci = "Significant DEGs")
+
+df <- rbind(d1,d2)
+
+p1 <- ggplot() + 
+  geom_density(data=d1, aes(x=fstat)) + 
+  geom_segment(aes(x=55.42671, xend=55.42671, y=0, yend=0.012), color="red") +
+  theme_bw() + 
+  scale_x_continuous(limits = c(-10,300)) +
+  theme(axis.title.y=element_blank())
+
+p2 <- ggplot() +
+  geom_density(data=d2, aes(x=fstat)) + 
+  geom_segment(aes(x=0.8005909, xend=0.8005909, y=0, yend=0.2), color="red") +
+  scale_x_continuous(limits = c(-10,300))  +
+  theme_bw() +
+  theme(axis.title.y=element_blank())
+
+# ggplot(data=df, aes(x=fstat, y=loci)) +
+#   geom_density_ridges(scale = .9, alpha = 0.8) +
+#   labs(x = expression(~italic(F)~-statistic), y ="Selected Loci") +
+#   scale_y_discrete(expand = c(0, 0)) +
+#   coord_cartesian(clip="off") +
+#   theme_ridges(center_axis_labels = T) +
+#   theme(legend.position = "none", text=element_text(size=20))+
+#   theme(axis.title.y=element_blank())
+  
+## how many runs had significant DEGs? 
+gene_names <- first50 |> purrr::map(3) 
+last_gene_names <- last50 |> purrr::map(3) 
+
+first_dims_matrix <- do.call(rbind, lapply(gene_names, dim))
+last_dims_matrix <- do.call(rbind, lapply(last_gene_names, dim))
+deseq_dims <- rbind(first_dims_matrix, last_dims_matrix)
+
+mean(deseq_dims[,1])
+median(deseq_dims[,1])
+max(deseq_dims[,1])
+plot(density(deseq_dims[,1]))
+
+dplyr::arrange(as.data.frame(deseq_dims), V1) ## 5 HAD more than 1000 outliers??
+deseq_outliers <- deseq_dims[deseq_dims[,1]<=1000, ] ## remove top outliers 
+
+sd(deseq_outliers[,1])
+median(deseq_outliers[,1])
+
+sum(deseq_dims[,1] %in% c(0,1,2)) #how many only ID'd 1-2 sig DEGs
+sum(deseq_dims[,1] %in% c(2))
+
+## plot pcas of the "median" case 
+fstat_sig[sapply(fstat_sig, is.na)] <- 0
+
+View(fstat_sig)
+mean(fstat_top)
+mean(fstat_sig)
+
+d1[20, ]
+d2[20, ]
+
+## plot example PCA
+dds.sig <- first_gene_names[50][[1]]
+res.sig <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
+rld.sig <- vst(dds, nsub=8) # vst is faster alternative
+
+## plot sig PCA
+
+plot_pcas(rld)
+
+## RE-run deseq to get top 1000 PCA
+
+### functions
+run_deseq <- function(treatment){
+  site.meta$treatment <- sample(treatment, length(treatment), TRUE) # randomly assign treatments
+  dds.site <- DESeqDataSetFromMatrix(countData = site.genecounts,
+                                     colData = site.meta,
+                                     design = ~treatment) 
+  
+  dds.site$treatment <- relevel(dds.site$treatment, "A")
+  
+  # # get gene names 
+  # assembly <- readGFF("~/KW/common_garden_cross/4_DESeq2/annotated_rnaspades/stringtie_all_merged_kw.gtf")             ## read in merged GTF
+  # gene_idx <- match(dds.site@rowRanges@partitioning@NAMES, assembly$gene_id)
+  # 
+  # # create gene_names, which is a table linking gene name, transcript ID, and xloc information for later distinguishing different isoforms of the same gene (same gene start and end) and transcripts generated from different paralogs of the same gene (by xloc)
+  # contig.name      <- as.character(assembly$seq[gene_idx])
+  # transcript_start <- assembly$start[gene_idx]
+  # transcript_end   <- assembly$end[gene_idx]
+  # transcript.id  <- assembly$transcript_id[gene_idx]
+  # gene_names     <- cbind(contig.name, transcript_start, transcript_end, transcript.id)
+  # 
+  # dds.site@rowRanges@partitioning@NAMES <- paste(gene_names[,1],gene_names[,2],gene_names[,3],gene_names[,4], sep=",") # adds unique gene names to dds
+  # which(duplicated(dds.site@rowRanges@partitioning@NAMES)) # check to make sure that no gene names in dds are duplicates  # which(duplicated(dds.site@rowRanges@partitioning@NAMES)) # check to make sure that no gene names in dds are duplicates
+  
+  ## Run DESeq 
+  dds.site <- DESeq(dds.site)
+  return(dds.site)
+}
+get_top_loci <- function(dds){
+  res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
+  top_lfc2 <- dds[order(abs(res$log2FoldChange), decreasing = TRUE), ][1:1000,]
+  top_lfc_vst <- varianceStabilizingTransformation(top_lfc2)
+  return(list(top_lfc2, top_lfc_vst))
+}
+get_sig_genes <- function(dds){
+  res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
+  sig_cge_genes <- dds[which(res$padj < 0.05),]
+  
+  if(nrow(sig_cge_genes) > 1){
+    tryCatch(
+      {
+        return(list(sig_cge_genes, varianceStabilizingTransformation(sig_cge_genes)))
+      },
+      error = function(cond) {
+        message("Here's the original error message:")
+        message(conditionMessage(cond))
+        # Choose a return value in case of error
+        list(sig_cge_genes, NULL)
+      }
+    )
+  }
+  else{
+    return(list(sig_cge_genes, NULL))
+  }
+}
+fstat_pcas <- function(vst){
+  if(!is.null(vst[[2]])){
+    pca.dat <- plotPCA(vst[[2]], intgroup = "treatment", returnData=TRUE)
+    Fstat <- summary(manova(as.matrix(pca.dat[,c(1:2)]) ~pca.dat$treatment))$stats[1,"approx F"]
+    return(Fstat)
+  }
+  else{
+    return(NULL)
+  }
+  
+  ## plot PCA by treatment using top 1000 DEGs 
+  # percentVar <- round(100*attr(plot.all.data, "percentVar"))
+  # ggplot(plot.all.data, aes(PC1, PC2, color=treatment, shape=treatment)) +
+  #   # ggtitle(paste("Top",num.genes,"DEGs, padj < ",p.cutoff,"and log2FC >",fc.cutoff)) +
+  #   scale_color_manual(values=c("#0C335E","#C19039")) +
+  #   geom_point(size=3) +
+  #   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+  #   ylab(paste0("PC2: ",percentVar[2],"% variance")) +
+  #   coord_fixed()
+}
+  
+###
+site.meta <- read.csv("../../data/cge_mon_sitemeta.csv")
+site.genecounts <- read.table("../../data/cge_mon_genecounts.txt")
+
+set.seed(930 + 53) ## make sure to set seed 
+treatment <- sample(LETTERS[1:2], 30, TRUE)
+
+dds <- run_deseq(treatment)
+top_genes <- get_top_loci(dds)
+sig_genes <- get_sig_genes(dds)
+
+plot_pcas <- function(top_lfc_vst){
+  plot.all.data <- plotPCA(top_lfc_vst, intgroup = "treatment", returnData=TRUE)
+  percentVar <- round(100*attr(plot.all.data, "percentVar"))
+  
+  ## plot PCA by treatment using top 1000 DEGs 
+  ggplot(plot.all.data, aes(PC1, PC2, color=treatment, shape=treatment)) +
+    # ggtitle(paste("Top",num.genes,"DEGs, padj < ",p.cutoff,"and log2FC >",fc.cutoff)) +
+    scale_color_manual(values=c("#0C335E","#C19039")) + 
+    geom_point(size=3) +
+    xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    ylab(paste0("PC2: ",percentVar[2],"% variance")) +
+    coord_fixed()
+}
+plot_pcas(top_genes[[2]])
+plot_pcas(sig_genes[[2]])
+
+fstat_pcas(top_genes)
+fstat_pcas(sig_genes)
+
+
+plot <- cowplot::plot_grid(
+  p1,
+  plot_pcas(top_genes[[2]]), 
+  p2, 
+  plot_pcas(sig_genes[[2]]), 
+  align ="hv", 
+  ncol=2
+)
+ggsave(plot, filename = "SI_express_boot.svg", dpi = 300, width = 8, height = 6, units = "in")
