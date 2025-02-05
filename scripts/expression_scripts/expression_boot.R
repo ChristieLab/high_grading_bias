@@ -126,4 +126,5 @@ sig_genes <- get_sig_genes(dds)
 f_top <- fstat_pcas(top_genes)
 f_sig <- fstat_pcas(sig_genes)
 
-saveRDS(list(f_top, f_sig, sig_genes[[1]]), paste0("/scratch/negishi/lee3617/ascertainment_bias/results/deseq_boot_res_", iter, ".RDS"))  
+saveRDS(list(f_top, f_sig, sig_genes[[1]])) 
+        # paste0("/scratch/negishi/lee3617/ascertainment_bias/results/deseq_boot_res_", iter, ".RDS"))  
