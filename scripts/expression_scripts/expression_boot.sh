@@ -10,4 +10,4 @@
 module purge
 module load r/4.3.3
 
-Rscript expression_boot.R $SLURM_ARRAY_TAS
+Rscript expression_boot.R $SLURM_ARRAY_TASK_ID
