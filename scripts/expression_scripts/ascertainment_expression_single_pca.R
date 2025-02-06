@@ -5,6 +5,7 @@
 library(DESeq2)
 library("rtracklayer")
 library(ggplot2)
+setwd("~/high_grading_bias/")
 
 colours <- khroma::color("batlow")
 manual_colors <- colours(4, range=c(0.1,0.8))
@@ -32,11 +33,16 @@ write.csv(site.meta, "data/cge_mon_sitemeta.csv")
 write.table(site.genecounts, "data/cge_mon_genecounts.txt")
 
 
-read.table("data/cge_mon_genecounts.txt") 
+
 # create a function to run DESeq2 
 run_deseq <- function(x){
   set.seed(x)
-  site.meta$treatment <- sample(LETTERS[1:2], nrow(site.meta), TRUE) # randomly assign treatments
+  
+
+  treatment <- c(rep('A', nrow(site.meta)/2), rep('B', nrow(site.meta)/2))
+  site.meta$treatment <- sample(treatment, nrow(site.meta), FALSE) # randomly assign treatments
+  
+  
   dds.site <- DESeqDataSetFromMatrix(countData = site.genecounts,
                                      colData = site.meta,
                                      design = ~treatment) 

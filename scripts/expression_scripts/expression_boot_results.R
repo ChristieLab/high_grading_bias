@@ -2,35 +2,21 @@ library(ggplot2)
 library(ggridges)
 library(DESeq2)
 
-setwd("~/assignment_tests/ascertainment_bias/results/expression_boot/")
+setwd("~/high_grading_bias/results/expression_hgb/")
 temp  <- list.files(pattern = "\\.RDS")
-first50 <-  lapply(temp[1:50], readRDS)
+res <-  lapply(temp[1:100], readRDS)
 
-## get f stat for first half
-fstat_top_first50 <- first50 |> purrr::map(1) 
-fstat_top_first50 <- unlist(fstat_top_first50)
+## get f stat f
+fstat_top <- res |> purrr::map(1) 
+fstat_top <- unlist(fstat_top)
 
-fstat_sig_first50 <- first50 |> purrr::map(2) 
-fstat_sig_first50[sapply(fstat_sig_first50, is.null)] <- NA # keeps all the NULL results
-fstat_sig_first50 <- unlist(fstat_sig_first50)
+fstat_sig <- res |> purrr::map(2) 
+fstat_sig[sapply(fstat_sig, is.null)] <- NA # keeps all the NULL results
+fstat_sig <- unlist(fstat_sig)
 
-# first_gene_names <- first50 |> purrr::map(3) ## get deseq obj for first half 
-# last_gene_names <- last50 |> purrr::map(3) 
-## get f stat for second half 
-last50   <- lapply(temp[51:100], readRDS)
 
-fstat_top_last50 <- last50 |> purrr::map(1) 
-fstat_top_last50 <- unlist(fstat_top_last50)
-
-fstat_sig_last50 <- last50 |> purrr::map(2) 
-fstat_sig_last50[sapply(fstat_sig_last50, is.null)] <- NA
-fstat_sig_last50 <- unlist(fstat_sig_last50) 
-
-## combine the 2 chunks 
-fstat_top  <- c(fstat_top_first50, fstat_top_last50)
-fstat_sig  <- c(fstat_sig_first50, fstat_sig_last50)
-fstat_sig[sapply(fstat_sig, is.na)] <- 0
 sum(is.na(fstat_sig) == TRUE) ## How many runs did not ID outliers 
+fstat_sig[sapply(fstat_sig, is.na)] <- 0
 
 d1 <- data.frame(fstat = fstat_top, loci = "Top 1000 DEGs")
 d2 <- data.frame(fstat = fstat_sig, loci = "Significant DEGs")
@@ -46,11 +32,13 @@ p1 <- ggplot() +
 
 p2 <- ggplot() +
   geom_density(data=d2, aes(x=fstat)) + 
-  geom_segment(aes(x=0.8005909, xend=0.8005909, y=0, yend=0.2), color="red") +
+  geom_segment(aes(x=0.8005909, xend=0.8005909, y=0, yend=0.25), color="red") +
   scale_x_continuous(limits = c(-10,300))  +
   theme_bw() +
   theme(axis.title.y=element_blank())
 
+p1
+p2
 # ggplot(data=df, aes(x=fstat, y=loci)) +
 #   geom_density_ridges(scale = .9, alpha = 0.8) +
 #   labs(x = expression(~italic(F)~-statistic), y ="Selected Loci") +
@@ -61,8 +49,11 @@ p2 <- ggplot() +
 #   theme(axis.title.y=element_blank())
   
 ## how many runs had significant DEGs? 
-gene_names <- first50 |> purrr::map(3) 
-last_gene_names <- last50 |> purrr::map(3) 
+setwd("/Users/andy/Library/Application Support/Mountain Duck/Volumes.noindex/Negishi Scratch.localized/ascertainment_bias/results/siggenes")
+temp  <- list.files(pattern = "\\.RDS")
+sig_genes <-  lapply(temp[1:100], readRDS)
+
+gene_names <- res |> purrr::map(3) 
 
 first_dims_matrix <- do.call(rbind, lapply(gene_names, dim))
 last_dims_matrix <- do.call(rbind, lapply(last_gene_names, dim))
