@@ -14,8 +14,7 @@ fstat_sig <- res |> purrr::map(2)
 fstat_sig[sapply(fstat_sig, is.null)] <- NA # keeps all the NULL results
 fstat_sig <- unlist(fstat_sig)
 
-
-sum(is.na(fstat_sig) == TRUE) ## How many runs did not ID outliers 
+sum(is.na(fstat_sig) == TRUE) ## How many runs could we not calculate F-stat 
 fstat_sig[sapply(fstat_sig, is.na)] <- 0
 
 d1 <- data.frame(fstat = fstat_top, loci = "Top 1000 DEGs")
@@ -25,15 +24,17 @@ df <- rbind(d1,d2)
 
 p1 <- ggplot() + 
   geom_density(data=d1, aes(x=fstat)) + 
-  geom_segment(aes(x=55.42671, xend=55.42671, y=0, yend=0.012), color="red") +
+  geom_segment(aes(x=65.01611, xend=65.01611, y=0, yend=0.012), color="red") +
   theme_bw() + 
-  scale_x_continuous(limits = c(-10,300)) +
+  scale_x_continuous(limits = c(-10,350)) +
   theme(axis.title.y=element_blank())
 
+
+  
 p2 <- ggplot() +
   geom_density(data=d2, aes(x=fstat)) + 
-  geom_segment(aes(x=0.8005909, xend=0.8005909, y=0, yend=0.25), color="red") +
-  scale_x_continuous(limits = c(-10,300))  +
+  geom_segment(aes(x=1.067702, xend=1.067702, y=0, yend=0.28), color="red") +
+  scale_x_continuous(limits = c(-10,350))  +
   theme_bw() +
   theme(axis.title.y=element_blank())
 
@@ -49,54 +50,71 @@ p2
 #   theme(axis.title.y=element_blank())
   
 ## how many runs had significant DEGs? 
-setwd("/Users/andy/Library/Application Support/Mountain Duck/Volumes.noindex/Negishi Scratch.localized/ascertainment_bias/results/siggenes")
-temp  <- list.files(pattern = "\\.RDS")
-sig_genes <-  lapply(temp[1:100], readRDS)
+setwd("/Users/andy/Library/Application Support/Mountain Duck/Volumes.noindex/Negishi Scratch.localized/ascertainment_bias/results/")
+temp  <- list.files(pattern = "\\.txt")
+sig_genes <-  lapply(temp[1:100], read.table)
 
-gene_names <- res |> purrr::map(3) 
+readRDS("deseq_permute_sig_genes_.RDS")
 
-first_dims_matrix <- do.call(rbind, lapply(gene_names, dim))
-last_dims_matrix <- do.call(rbind, lapply(last_gene_names, dim))
-deseq_dims <- rbind(first_dims_matrix, last_dims_matrix)
+num_outlier <-read.table("/Users/andy/Library/Application Support/Mountain Duck/Volumes.noindex/Negishi Scratch.localized/ascertainment_bias/results/deseq_permute_sig_gene_count.txt")
 
-mean(deseq_dims[,1])
-median(deseq_dims[,1])
-max(deseq_dims[,1])
-plot(density(deseq_dims[,1]))
+mean(num_outlier[,2])
+median(num_outlier[,2])
+max(num_outlier[,2])
+plot(density(num_outlier[,2]))
+sd(num_outlier[,2])
 
-dplyr::arrange(as.data.frame(deseq_dims), V1) ## 5 HAD more than 1000 outliers??
+
+dplyr::arrange(as.data.frame(num_outlier), V2) ## 5 HAD more than 1000 outliers??
 deseq_outliers <- deseq_dims[deseq_dims[,1]<=1000, ] ## remove top outliers 
 
-sd(deseq_outliers[,1])
-median(deseq_outliers[,1])
+sum(num_outlier[,2] %in% c(0,1,2)) #how many only ID'd 1-2 sig DEGs
+sum(num_outlier[,2] %in% c(0))
+sum(num_outlier[,2] %in% c(1))
+sum(num_outlier[,2] %in% c(2))
+table(num_outlier)
 
-sum(deseq_dims[,1] %in% c(0,1,2)) #how many only ID'd 1-2 sig DEGs
-sum(deseq_dims[,1] %in% c(2))
-
-## plot pcas of the "median" case 
+##### plot pcas of the "median" case 
 fstat_sig[sapply(fstat_sig, is.na)] <- 0
 
 View(fstat_sig)
 mean(fstat_top)
 mean(fstat_sig)
 
-d1[20, ]
-d2[20, ]
+d1 <- data.frame(fstat = fstat_top, loci = "Top 1000 DEGs")
+d2 <- data.frame(fstat = fstat_sig, loci = "Significant DEGs")
 
+## run 69 had the most representative f-stats
+d1[69, ]
+d2[69, ]
+df <- cbind(d1,d2)
+View(df)
 ## plot example PCA
-dds.sig <- first_gene_names[50][[1]]
-res.sig <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
-rld.sig <- vst(dds, nsub=8) # vst is faster alternative
+treatment <- c(rep('A', nrow(site.meta)/2), rep('B', nrow(site.meta)/2))
 
-## plot sig PCA
 
-plot_pcas(rld)
+iter <- 70 ## the 70th run is 69 in the above df
+set.seed(930 + iter)
 
-## RE-run deseq to get top 1000 PCA
+dds <- run_deseq(treatment)
+top_genes <- get_top_loci(dds)
+sig_genes <- get_sig_genes(dds)
 
-### functions
+fstat_pcas(top_genes)
+fstat_pcas(sig_genes)
+
+p3 <- plot_pcas(top_genes[[2]])
+p4 <- plot_pcas(sig_genes[[2]])
+
+plot <- cowplot::plot_grid(p1, p3, p2, p4, labels="AUTO", nrow = 2, align = "hv")
+ggsave(plot, filename = "../../figures/SI_express_boot.svg", dpi = 400, width = 8, height = 6, units = "in")
+
+
+## plot them all together 
+
+### functions ====
 run_deseq <- function(treatment){
-  site.meta$treatment <- sample(treatment, length(treatment), TRUE) # randomly assign treatments
+  site.meta$treatment <- sample(treatment, length(treatment), FALSE) # randomly assign treatments
   dds.site <- DESeqDataSetFromMatrix(countData = site.genecounts,
                                      colData = site.meta,
                                      design = ~treatment) 
@@ -126,7 +144,7 @@ get_top_loci <- function(dds){
   top_lfc2 <- dds[order(abs(res$log2FoldChange), decreasing = TRUE), ][1:1000,]
   top_lfc_vst <- varianceStabilizingTransformation(top_lfc2)
   return(list(top_lfc2, top_lfc_vst))
-}
+} ## get "top 1000 loci" 
 get_sig_genes <- function(dds){
   res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
   sig_cge_genes <- dds[which(res$padj < 0.05),]
@@ -148,38 +166,6 @@ get_sig_genes <- function(dds){
     return(list(sig_cge_genes, NULL))
   }
 }
-fstat_pcas <- function(vst){
-  if(!is.null(vst[[2]])){
-    pca.dat <- plotPCA(vst[[2]], intgroup = "treatment", returnData=TRUE)
-    Fstat <- summary(manova(as.matrix(pca.dat[,c(1:2)]) ~pca.dat$treatment))$stats[1,"approx F"]
-    return(Fstat)
-  }
-  else{
-    return(NULL)
-  }
-  
-  ## plot PCA by treatment using top 1000 DEGs 
-  # percentVar <- round(100*attr(plot.all.data, "percentVar"))
-  # ggplot(plot.all.data, aes(PC1, PC2, color=treatment, shape=treatment)) +
-  #   # ggtitle(paste("Top",num.genes,"DEGs, padj < ",p.cutoff,"and log2FC >",fc.cutoff)) +
-  #   scale_color_manual(values=c("#0C335E","#C19039")) +
-  #   geom_point(size=3) +
-  #   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-  #   ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-  #   coord_fixed()
-}
-  
-###
-site.meta <- read.csv("../../data/cge_mon_sitemeta.csv")
-site.genecounts <- read.table("../../data/cge_mon_genecounts.txt")
-
-set.seed(930 + 53) ## make sure to set seed 
-treatment <- sample(LETTERS[1:2], 30, TRUE)
-
-dds <- run_deseq(treatment)
-top_genes <- get_top_loci(dds)
-sig_genes <- get_sig_genes(dds)
-
 plot_pcas <- function(top_lfc_vst){
   plot.all.data <- plotPCA(top_lfc_vst, intgroup = "treatment", returnData=TRUE)
   percentVar <- round(100*attr(plot.all.data, "percentVar"))
@@ -193,19 +179,3 @@ plot_pcas <- function(top_lfc_vst){
     ylab(paste0("PC2: ",percentVar[2],"% variance")) +
     coord_fixed()
 }
-plot_pcas(top_genes[[2]])
-plot_pcas(sig_genes[[2]])
-
-fstat_pcas(top_genes)
-fstat_pcas(sig_genes)
-
-
-plot <- cowplot::plot_grid(
-  p1,
-  plot_pcas(top_genes[[2]]), 
-  p2, 
-  plot_pcas(sig_genes[[2]]), 
-  align ="hv", 
-  ncol=2
-)
-ggsave(plot, filename = "SI_express_boot.svg", dpi = 300, width = 8, height = 6, units = "in")
