@@ -97,8 +97,21 @@ iter <- 70 ## the 70th run is 69 in the above df
 set.seed(930 + iter)
 
 dds <- run_deseq(treatment)
+
+res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
+dds[which(abs(res$log2FoldChange) > 2),]
+
+sig_cge_genes <- dds[which(res$padj < 0.05),]
+print(res[which(res$padj < 0.05),])
+
+
+
+
+
 top_genes <- get_top_loci(dds)
 sig_genes <- get_sig_genes(dds)
+
+
 
 fstat_pcas(top_genes)
 fstat_pcas(sig_genes)
