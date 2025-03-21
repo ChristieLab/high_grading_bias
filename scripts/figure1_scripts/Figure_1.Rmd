@@ -7,38 +7,39 @@ date: "2024-05-03"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(snpR)
+library(ggplot2)
+library(tidyverse)
+library(khroma)
+library(cowplot)
+library(ggpubr)
 ```
 
 This script will produce Figure 1, which demonstrates the high-FST/ascertainment bias issue in PCA and other assignment/clustering approaches.
 
 # Pull in data
 
-We use monarch data from [this paper](doi.org/10.1111/mec.16592) to illustrate the overfitting problem created by taking high $F_{ST}$ loci when doing clustering/assignment testing. Specifically, we will use samples from: A) North America, divided randomly into two populations and B) Guam and Rota islands. The former should have no population structure, the latter should have strong population structure.
+We use monarch data from [this paper](doi.org/10.1111/mec.16592) to illustrate the overfitting problem created by taking high $F_{ST}$ loci when doing clustering/assignment testing. Specifically, we will use samples from North America, divided randomly into two populations.
 
 ```{r}
 set.seed(1232321)
 
 ## monarchs clean up
-monarchs <- readRDS("../data/monarch_nomaf.RDS")
+monarchs <- readRDS("../../data/monarch_nomaf.RDS")
 colnames(sample.meta(monarchs)) <- c("sampID", "pop", ".sample.id")
 sample.meta(monarchs)$sampID <- gsub("\\.", "_", sample.meta(monarchs)$sampID)
 sample.meta(monarchs) <- sample.meta(monarchs)[,1:2]
 
-## highly differentiated GUA and ROT samples 
-monarchs_gr <- filter_snps(monarchs[pop = c("GUA", "ROT")], maf = 0.05, min_ind = .75, min_loci = .75)
-
 ## randomly assign A-D to panmictic north america samples 
-monarchs_random <- filter_snps(monarchs[pop = "NAM"], maf = 0.05, min_ind = .75, min_loci = .75)
-sample.meta(monarchs_random)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random), TRUE)
+monarchs_random_allsnps <- filter_snps(monarchs[pop = "NAM"], maf = 0.05, min_ind = .75, min_loci = .75)
+sample.meta(monarchs_random_allsnps)$pop <- sample(c("A", "B", "C", "D"), nsamps(monarchs_random_allsnps), TRUE)
 
 ## save for later
-saveRDS(monarchs_gr, "../data/monarchs_gr.RDS")
-saveRDS(monarchs_random, "../data/monarchs_random.RDS")
+saveRDS(monarchs_random_allsnps, "../../data/monarchs_random.RDS")
 ```
 
 # Grab high $F_{ST}$ loci
 
-Next, we will grab the highest (top 5%) $F_{ST}$ loci within each dataset.
+Next, we will grab the highest (top 5%) $F_{ST}$ loci the dataset.
 
 ```{r}
 #### Monarch data for testing ascertainment bias using highly and non differentiated populations
@@ -53,25 +54,138 @@ get_high_fst <- function(rds, percent_highest){
   return(high_fst_rds)
 }
 
-nam_high_fst <- get_high_fst(monarchs_random, 0.95)
-gr_high_fst <- get_high_fst(monarchs_gr, 0.95)
+monarchs_random_highfst <- get_high_fst(monarchs_random_allsnps, 0.95)
+saveRDS(monarchs_random_highfst, "../../data/monarchs_random_highfst.RDS")
 ```
 
-# Generate PCA, DAPC, UMAP, tSNE plots for the random data
+# Generate PCAs for figure
+```{r}
+## Set colors
+colours <- color("batlow")
+monarch_colors <- colours(4, range=c(0.1,0.8))
 
-Next, generate plots using the various clustering approaches. All of these will go to the supplementary material aside from the PCA.
+
+# plot PCAs for figure 1 
+pca_all  <- plot_clusters(monarchs_random_allsnps, "pop", "pca", alt.palette = monarch_colors)
+
+pca_all$plots$pca <- pca_all$plots$pca + 
+  guides(color=guide_legend(title = stringr::str_wrap("Randomly Assigned Population", width =20)))
+
+pca_high <- plot_clusters(monarchs_random_highfst, "pop", "pca", alt.palette = monarch_colors)
+
+```
+
+# Generate STUCTURE plots
+
+```{r}
+## plot STRUCTURE for fig 1 
+setwd("../../results/structure/all_sites_structure_res/")
+structure_allsnps <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_allsnps)$pop, alt.palette = monarch_colors[c(1,3,2,4)], facet.order = c("A", "B", "C", "D"))
+
+setwd("../high_fst_structure_res/")
+structure_highfst <- plot_structure("merged", k = 4, facet = sample.meta(monarchs_random_highfst)$pop, alt.palette = monarch_colors[c(1,3,2,4)], facet.order = c("A", "B", "C", "D"))
+
+setwd("../../../scripts/figure1_scripts")
+
+```
+
+# Generate Rubias plots
+```{r}
+## plot RUBIAS results for figure 1 
+rubias_all  <- read.table("../../results/rubias/monarchs_random_rubias.txt", header = 1)
+rubias_high <- read.table("../../results/rubias/monarchs_random_highfst_rubias.txt", header = 1)
+
+p_rubias_all <- ggplot(rubias_all) +
+  geom_bar(aes(fill=inferred_collection, x=collection), position="fill", width =0.975) + 
+  labs(x= "Randomly Assigned Population",  y="Proportion of Individuals Assigned") +
+  scale_fill_manual(values=monarch_colors[3:4]) +
+  theme_bw() + 
+  guides(fill=guide_legend(title = stringr::str_wrap("Inferred Population", width =20)))
+  
+p_rubias_high <- ggplot(rubias_high) +
+  geom_bar(aes(fill=inferred_collection, x=collection), position="fill", width =0.975) + 
+  labs(x= "Randomly Assigned Population",  y="Proportion of Individuals Assigned") +
+  scale_fill_manual(values=monarch_colors)+ theme_bw() + 
+  guides(fill=guide_legend(title = stringr::str_wrap("Inferred Population", width =20)))
+```
+
+# Combine and save
+```{r}
+
+top_lg <- get_legend(pca_all$plots$pca + 
+                       theme(legend.title = element_text(size=14),
+                             legend.text = element_text(size=12)))
+mid_lg <- get_legend(structure_allsnps$plot + 
+                       theme(legend.title = element_text(size=14),
+                             legend.text = element_text(size=12)))
+btm_lg <- get_legend(p_rubias_high + 
+                       theme(legend.title = element_text(size=14),
+                             legend.text = element_text(size=12)))
+
+figure_1 <- plot_grid(
+  pca_all$plots$pca + 
+    guides(color="none") + 
+    ggtitle("All SNPs") + 
+    theme(plot.title = element_text(size=20), 
+          axis.text = element_text(angle=0, size=12), 
+          axis.title = element_text(size=14)), 
+  
+  pca_high$plots$pca + guides(color="none") + 
+    ggtitle(expression('Top' * ' ' * '5%' * ' ' *italic("F")[ST])) + 
+    theme(plot.title = element_text(size=20), 
+          axis.text = element_text(angle=0, size=12), 
+          axis.title = element_text(size=14)), 
+  top_lg,
+  
+  structure_allsnps$plot + 
+    guides(fill="none", color="none") + 
+    xlab("Randomly Assigned Population") + 
+    theme(axis.text = element_text(angle=0, size=12), 
+          axis.text.x = element_text(angle=0),
+          axis.title = element_text(size=14)),
+  
+  structure_highfst$plot + 
+    guides(fill="none", color="none") + 
+    xlab("Randomly Assigned Population") + 
+    theme(axis.text = element_text(size=12), 
+          axis.text.x = element_text(angle=0),
+          axis.title = element_text(size=14)),
+  mid_lg,
+  
+  p_rubias_all + guides(fill="none") + 
+    scale_x_discrete(expand = c(0,0)) + 
+    scale_y_continuous(expand = c(0,0)) + 
+    theme(axis.text = element_text(angle=0, size=12), 
+          axis.title = element_text(size=14)),
+  
+  p_rubias_high + guides(fill="none") + 
+    scale_x_discrete(expand = c(0,0)) + 
+    scale_y_continuous(expand = c(0,0)) +
+    theme(axis.text = element_text(angle=0, size=12),
+          axis.title = element_text(size=14)), 
+  
+  btm_lg,
+  ncol = 3, axis = "tr", align="hv", rel_widths =c(1,1,.3)
+)
+figure_1
+save_plot("../../results/Figure1.pdf", figure_1,  base_height = 11, base_width = 15)
+
+```
+
+# Other plots for SI
+
+## Generate DAPC, UMAP, tSNE plots for the random data
+
+Next, generate plots using the various clustering approaches. All of these will go to the supplementary material.
 
 For the NAM DAPC, use the following: 6 PCs, 4 clusters, 3 discriminants
-
-For the GUA/ROT DAPC, use the following: 6 PCs, 2 clusters, 1 discriminant
-
 
 ```{r}
 generate_clusters <- function(rds,
                               npca,
                               nclust,
                               ndisc){
-  plots <- plot_clusters(rds, "pop", plot_type = c("pca", "dapc", "tsne", "umap"),
+  plots <- plot_clusters(rds, "pop", plot_type = c("dapc", "tsne", "umap"),
                          dapc_clustering_npca = npca, dapc_clustering_nclust = nclust, 
                          dapc_npca = npca, dapc_ndisc = ndisc,
                          dapc_clustering_max_n_clust = NULL,
@@ -80,10 +194,20 @@ generate_clusters <- function(rds,
 }
 
 
-nam_rand_plots <- generate_clusters(monarchs_random, 6, 4, 2)
-nam_high_fst_plots <- generate_clusters(nam_high_fst, 6, 4, 2)
-gr_plots <- generate_clusters(monarchs_gr, 6, 2, 1)
-gr_high_fst_plots <- generate_clusters(gr_high_fst, 6, 2, 1)
+nam_rand_plots <- generate_clusters(monarchs_random_highfst, 6, 4, 2)
 
+```
+
+## sNMF and snapclust
+```{r}
+snmf <- plot_structure(monarchs_random_highfst, "pop", 
+                        method = "snmf", 
+                        structure_path = "/usr/bin/structure.exe",
+                        k = 2:4, iterations = 500, burnin = 100)
+
+snapclust <- plot_structure(monarchs_random_highfst, "pop", 
+                        method = "snapclust", 
+                        structure_path = "/usr/bin/structure.exe",
+                        k = 2:4, iterations = 500, burnin = 100)
 ```
 

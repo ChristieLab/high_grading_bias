@@ -1,0 +1,453 @@
+---
+title: "Figure_3"
+output: html_document
+date: "2024-05-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(snpR); library(ggplot2); library(cowplot); source("../functions.R"); library(ggblend); library(OutFLANK); library(pcadapt)
+
+# subfuncs
+get_high_fst <- function(x, cut){
+  x <- calc_global_fst(x, "pop")
+  fst <- x@pairwise.stats[facet == "pop" & comparison == ".GLOBAL"]
+  high_fst <- which(fst$fst >= quantile(fst$fst, cut, na.rm = TRUE))
+  
+  total_fst <- get.snpR.stats(x, "pop", "fst")$weighted.means$mean_fst
+  
+  x_high <- x[which(snp.meta(x)$.snp.id %in% fst$.snp.id[high_fst]),]
+  
+  return(list(x = x_high, total_fst = total_fst))
+}
+
+plot_pca <- function(x) {
+  return(ggplot(x$data$pca, aes(x = PC1, y = PC2, color = pop)) +
+           geom_point(show.legend = FALSE) +
+           theme_bw() +
+           xlab(paste0("PC1 (", round(x$pca_loadings[1]/sum(x$pca_loadings)*100, 2), "%)")) +
+           ylab(paste0("PC2 (", round(x$pca_loadings[2]/sum(x$pca_loadings)*100, 2), "%)")) +
+           scale_color_manual(values = monarch_colors))
+}
+
+plot_density <- function(x){
+  return(ggplot(x$null, aes(x = delta_Fstat)) +
+           geom_density(color = monarch_colors[[4]]) +
+           geom_vline(xintercept = x$observed$delta_Fstat, color = monarch_colors[[2]]) +
+           theme_bw() +
+           xlab(bquote(Delta*italic(F))) +
+           ylab("Density"))
+}
+colours <- khroma::color("batlow")
+monarch_colors <- colours(4, range=c(0.1,0.8))
+# monarch_colors <- c("#d4a85e","#eb5d2e","#829b51","#393e42")
+
+```
+
+# read in boot data
+```{r}
+files <- list(list.files("../../results/PCA_boots/cryptic_multi/permutation", "101_boot_r", full.names = TRUE),
+              list.files("../../results/PCA_boots/no_struct_multi/permutation/", "permutation_1_boot", full.names = TRUE),
+              list.files("../../results/PCA_boots/cryptic_multi/permutation", "_101_control_boot", full.names = TRUE))
+res <- lapply(files, parse_boot_res)
+p <- purrr::map(res, "p")
+
+
+
+# keys <- c("candidate_cryptic_multi_101_boot", "ms_boot", "island_redo")
+# files <- lapply(keys, function(x) list.files("../../results/PCA_boots/", x, full.names = TRUE))
+# res <- lapply(files, parse_boot_res)
+# p <- purrr::map(res, "p")
+# plots <- purrr::map(res, "plot")
+```
+
+# prep PCAs
+```{r}
+
+# run, uncomment if needed
+# # random
+# rand <- readRDS("../../results/PCA_boots/no_struct_multi/permutation/ms_out_1.RDS")
+# t_a_PCA_rand <- plot_clusters(rand, "pop")
+# rand_high <- get_high_fst(rand, .95)
+# t_h_PCA_rand <- plot_clusters(rand_high$x, "pop")
+# saveRDS(list(all = rand, PCAa = t_a_PCA_rand, high = rand_high, PCAh = t_h_PCA_rand),
+#         "../../results/pca_rand.RDS")
+# 
+# # island
+# island <- readRDS("../../results/PCA_boots/cryptic_multi/permutation/candidate_cryptic_multi_120_control.RDS")
+# t_a_PCA_island <- plot_clusters(island, "pop")
+# island_high <- get_high_fst(island, .95)
+# t_h_PCA_island <- plot_clusters(island_high$x, "pop")
+# saveRDS(list(all = island, PCAa = t_a_PCA_island, high = island_high, PCAh = t_h_PCA_island),
+#         "../../results/pca_island.RDS")
+# 
+# # cryptic
+# cryptic <- readRDS("../../results/PCA_boots/cryptic_multi/permutation/candidate_cryptic_multi_101.RDS")
+# t_a_PCA_cryptic <- plot_clusters(cryptic, "pop")
+# cryptic_high <- get_high_fst(cryptic, .95)
+# t_h_PCA_cryptic <- plot_clusters(cryptic_high$x, "pop")
+# saveRDS(list(all = cryptic, PCAa = t_a_PCA_cryptic, high = cryptic_high, PCAh = t_h_PCA_cryptic),
+#         "../../results/pca_cryptic_permutation.RDS")
+
+
+# read in pre-run results
+rand <- readRDS("../../results/pca_rand.RDS")
+t_a_PCA_rand <- rand$PCAa
+rand_high <- rand$high
+t_h_PCA_rand <- rand$PCAh
+rand <- rand$all
+
+island <- readRDS("../../results/pca_island.RDS")
+t_a_PCA_island <- island$PCAa
+island_high <- island$high
+t_h_PCA_island <- island$PCAh
+island <- island$all
+
+cryptic <- readRDS("../../results/pca_cryptic_permutation.RDS")
+t_a_PCA_cryptic <- cryptic$PCAa
+cryptic_high <- cryptic$high
+t_h_PCA_cryptic <- cryptic$PCAh
+cryptic <- cryptic$all
+```
+# distribution of F-stats
+```{r}
+plabel <- function(p, n = 100){
+  if(p == 0){
+    return("p < 0.01")
+  }
+  if(p == 1){
+    return("p > 0.99")
+  }
+  return(paste0("p = ", round(p, 3)))
+}
+
+rand_delta <- ggplot(res[[2]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[2]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw() +
+  geom_label(data = data.frame(x = -Inf, 
+                       y = Inf,
+                       hjust = -.12,
+                       vjust = 1.3,
+                       label = plabel(p[[2]]["delta_Fstat"])),
+            aes(y = y, x = x, hjust = hjust, vjust = vjust, label = label), size = 3
+  )
+
+island_delta <- ggplot(res[[3]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[3]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw() +
+  geom_label(data = data.frame(x = -Inf, 
+                       y = Inf,
+                       hjust = -.12,
+                       vjust = 1.3,
+                       label = plabel(p[[3]]["delta_Fstat"])),
+            aes(y = y, x = x, hjust = hjust, vjust = vjust, label = label), size = 3
+  )
+
+cryptic_delta <- ggplot(res[[1]]$null, aes(x = delta_Fstat)) +
+  geom_density() +
+  geom_vline(xintercept = res[[1]]$observed$delta_Fstat, color = "red", linetype = "dashed") +
+  theme_bw() +
+  geom_label(data = data.frame(x = -Inf, 
+                       y = Inf,
+                       hjust = -.12,
+                       vjust = 1.3,
+                       label = plabel(p[[1]]["delta_Fstat"])),
+            aes(y = y, x = x, hjust = hjust, vjust = vjust, label = label), size = 3
+  )
+
+```
+
+# make Fig 3
+```{r}
+
+adjust_PCA_plots <- function(tplot){
+  
+  tplot <- ggplot(tplot$data$pca, aes(x = PC1, y = PC2, color = pop, partition = pop)) +
+    geom_point(size = 1, alpha = 0.75) * (blend("lighten") + blend("multiply", alpha = 0.75)) +
+    theme_bw() + 
+    guides(color = "none",) +
+    # geom_point(size = .1, aes(color = pop)) +
+    scale_x_continuous(labels = function(x) sprintf("%.2f", x)) +
+    scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
+    theme(axis.title = element_text(size = 10),
+          axis.text = element_text(size = 8),
+          plot.title = element_text(size = 12)) +
+    scale_color_manual(values = monarch_colors) +
+    xlab(paste0("PC1 (", round(tplot$pca_loadings[1], 2), "%)")) +
+    ylab(paste0("PC2 (", round(tplot$pca_loadings[2], 2), "%)"))
+  
+  return(tplot)
+}
+
+adjust_density_plots <- function(tplot){
+  tplot <- tplot +
+    scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
+    theme(axis.title = element_text(size = 10),
+          axis.text = element_text(size = 8),
+          plot.title = element_text(size = 12)) +
+    ylab("Density") +
+    xlab(expression(Delta * italic(F)))
+  return(tplot)
+}
+
+Figure2 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand), # row 1: all
+                     adjust_PCA_plots(t_a_PCA_island),
+                     adjust_PCA_plots(t_a_PCA_cryptic),
+
+                     # row 2: top 5%
+                     adjust_PCA_plots(t_h_PCA_rand),
+                     adjust_PCA_plots(t_h_PCA_island),
+                     adjust_PCA_plots(t_h_PCA_cryptic),
+                     
+                     # row 3: clustering improvement
+                     adjust_density_plots(rand_delta),
+                     adjust_density_plots(island_delta),
+                     adjust_density_plots(cryptic_delta),
+                     ncol = 3, scale = .98, align = "hv", axis = "lrtb")
+cairo_pdf("../../results/Figure3t.pdf", width = 7, height = 7)
+Figure2
+dev.off()
+
+```
+# Figure 4: Outlier tests
+
+We do F4 here as well since some of the PCAs produced above are used again.
+
+## subfunctions
+```{r}
+run_outflank <- function(dat){
+  sn <- format_snps(dat, "sn", interpolate = FALSE)
+  header_cols <- ncol(snp.meta(dat)) - 1
+  sn <- t(sn[,-c(1:header_cols)])
+  sn[is.na(sn)] <- 9
+  
+  pops <- sample.meta(dat)$pop
+  
+  cat("Preparing data...\n")
+  FstDataFrame <- OutFLANK::MakeDiploidFSTMat(sn,
+                                              locusNames = snp.meta(dat)$.snp.id,
+                                              popNames = pops)
+  
+  
+  cat("Running OutFLANK.\n")
+  out1 <- OutFLANK(FstDataFrame, NumberOfSamples = length(unique(pops)))
+  out1 <- cbind(out1, snp.meta(dat))
+  
+  return(out1)
+}
+
+run_PCAdapt <- function(dat, K = 2, min.maf = 0.001, LDsize = 200, LDthresh = 0.1){
+  tmp <- tempfile(tmpdir = ".")
+  chrname <- ifelse("chr" %in% colnames(snp.meta(dat)), "chr", "group")
+  format_snps(dat, "plink", "pop", chr = chrname, outfile = tmp)
+
+  pcadpt_input <- read.pcadapt(paste0(tmp, ".bed"), "bed")
+  pcapt_res <- pcadapt::pcadapt(pcadpt_input, K = K, min.maf = min.maf, LD.clumping = list(size = LDsize, thr = LDthresh))
+
+  rmf <- list.files(".", basename(tmp))
+  file.remove(rmf)
+
+  return(cbind(snp.meta(dat), p = pcapt_res$pvalues))
+}
+
+adjust_PCA_plots_outs <- function(tplot){
+  
+  if(is.ggplot(tplot)){
+    tplot <- tplot + theme_nothing()
+  }
+  
+  else{
+    tplot <- ggplot(tplot$data$pca, aes(x = PC1, y = PC2, color = pop, partition = pop)) +
+      geom_point(size = 1, alpha = 0.75) * (blend("lighten") + blend("multiply", alpha = 0.75)) +
+      theme_bw() + 
+      guides(color = "none",) +
+      # geom_point(size = .1, aes(color = pop)) +
+      scale_x_continuous(labels = function(x) sprintf("%.2f", x)) +
+      scale_y_continuous(labels = function(x) sprintf("%.2f", x)) +
+      theme(axis.title = element_text(size = 10),
+            axis.text = element_text(size = 8),
+            plot.title = element_text(size = 12)) +
+      scale_color_manual(values = monarch_colors) +
+      xlab(paste0("PC1 (", round(tplot$pca_loadings[1], 2), "%)")) +
+      ylab(paste0("PC2 (", round(tplot$pca_loadings[2], 2), "%)"))
+  
+  }
+  
+  return(tplot)
+}
+
+plot_sep <- function(pd){
+  sep <- reshape2::melt(pd$data$pca[,1:(which(colnames(pd$data$pca) == "PC2"))],
+                        id.vars = colnames(pd$data$pca)[1:(which(colnames(pd$data$pca) == "PC1") - 1)])
+  sep <- as.data.table(sep)
+  sep[, variable := ifelse(variable == "PC1",
+                           paste0("PC1 (", round(pd$pca_loadings[1], 2), "%)"),
+                           paste0("PC2 (", round(pd$pca_loadings[2], 2), "%)"))]
+  
+  of_sep <- ggplot(sep, aes(y = value, x = pop, color = pop)) +
+    geom_boxplot(show.legend = FALSE) +
+    geom_boxplot(aes(fill = pop), alpha = .5, show.legend = FALSE)  +
+    ggpubr::stat_compare_means(method = "anova", size = 2.5) +
+    facet_grid(~variable, scales = "free_y") +
+    scale_color_manual(values = monarch_colors) +
+    scale_fill_manual(values = monarch_colors) +
+    theme_bw() +
+    theme(axis.title = element_text(size = 10),
+          axis.text = element_text(size = 8),
+          plot.title = element_text(size = 12),
+          strip.background = element_blank(),
+          strip.text = element_text(size = 8)) +
+    xlab("Population") +
+    ylab("PC")
+  
+  return(of_sep)
+}
+
+plot_pca_sets <- function(d, ofr, par){
+  outliers_of <- which(ofr$results.OutlierFlag)
+  outliers_par <- which(p.adjust(par$p, "BH") <= 0.05)
+  
+  # null plots
+  null_pca <-  ggplot() +
+    geom_text(data = data.frame(lab = "No Outliers", x = 1, y = 1), 
+              aes(x = x, y = y, label = lab)) +
+    theme_classic() +
+    theme(axis.title = element_text(size = 10),
+          axis.text = element_blank(),
+          plot.title = element_text(size = 12)) +
+    xlab("PC1") +
+    ylab("PC2")
+  null_sep <- ggplot() +
+    geom_text(data = data.frame(lab = "No Outliers", x = 1, y = 1, variable = c("PC1", "PC2")), 
+              aes(x = x, y = y, label = lab), size = 3) +
+    facet_grid(~variable) +
+    theme_classic() +
+    theme(axis.title = element_text(size = 10),
+          axis.text = element_blank(),
+          plot.title = element_text(size = 12),
+          strip.background = element_blank(),
+          strip.text = element_text(size = 8)) +
+    xlab("Population") +
+    ylab("PC")
+  
+  
+  # outflank
+  if(length(outliers_of) > 0){
+    raw_of_pca <- plot_clusters(d[outliers_of,], "pop")
+    of_pca <- adjust_PCA_plots_outs(raw_of_pca)
+    of_sep <- plot_sep(raw_of_pca)
+      
+  }
+  else{
+    of_pca <- null_pca
+    of_sep <- null_sep
+  }
+  
+  
+  # pcadapt
+  if(length(outliers_par) > 0){
+    raw_par_pca <- plot_clusters(d[outliers_par,], "pop")
+    par_pca <- adjust_PCA_plots_outs(raw_par_pca)
+    par_sep <- plot_sep(raw_par_pca)
+
+  }
+  else{
+    par_pca <- null_pca
+    par_sep <- null_sep
+  }
+  
+  
+  # joint
+  joint <- FALSE
+  if(length(outliers_par) > 0 & length(outliers_of) > 0){
+    outliers_joint <- intersect(outliers_of, outliers_par)
+    if(length(outliers_joint) > 0){
+      raw_pca_joint <- plot_clusters(d[outliers_joint,], "pop")
+      pca_joint <- adjust_PCA_plots_outs(raw_pca_joint)
+      joint_sep <- plot_sep(raw_pca_joint)
+      joint <- TRUE
+    }
+  }
+  
+  if(!joint){
+    pca_joint <- null_pca
+    joint_sep <- null_sep
+  }
+  
+  return(list(PCA_2d = list(of = of_pca, par = par_pca, joint = pca_joint),
+              PCA_1d = list(of = of_sep, par = par_sep, joint = joint_sep)))
+}
+
+```
+
+## run outflank and pcadapt
+
+Note: these are a bit slow and are actually run on a cluster with the noted code.
+```{r}
+rand_filt <- filter_snps(rand, maf = 0.05, maf_facets = "pop")
+# outflank_rand <- run_outflank(rand_filt)
+# pcadapt_rand <- run_PCAdapt(rand_filt)
+# 
+cryptic_filt <- filter_snps(cryptic, maf = 0.05, maf_facets = "pop")
+# outflank_cryptic <- run_outflank(cryptic_filt)
+# pcadapt_cryptic <- run_PCAdapt(cryptic_filt)
+
+
+island_filt <- filter_snps(island, maf = 0.05, maf_facets = "pop")
+# outflank_island <- run_outflank(island_filt)
+# pcadapt_island <- run_PCAdapt(island_filt)
+
+outflank_rand <- readRDS("../../results/outliers_rand_outflank_res.RDS")
+pcadapt_rand <- readRDS("../../results/outliers_rand_PCAdapt_res.RDS")
+
+outflank_cryptic <- readRDS("../../results/outliers_cryptic_outflank_res.RDS")
+pcadapt_cryptic <- readRDS("../../results/outliers_cryptic_PCAdapt_res.RDS")
+
+outflank_island <- readRDS("../../results/outliers_island_outflank_res.RDS")
+pcadapt_island <- readRDS("../../results/outliers_island_PCAdapt_res.RDS")
+
+```
+
+## plot PCAs with loci identified as outliers by either or both methods
+
+```{r}
+out_pcas_cryptic <- plot_pca_sets(cryptic_filt, outflank_cryptic, pcadapt_cryptic)
+out_pcas_rand <- plot_pca_sets(rand_filt, outflank_rand, pcadapt_rand)
+out_pcas_island <- plot_pca_sets(island_filt, outflank_island, pcadapt_island)
+```
+
+
+
+## arrange
+
+```{r}
+Figure3 <- plot_grid(adjust_PCA_plots(t_a_PCA_rand), # row 1: all
+                     adjust_PCA_plots(t_a_PCA_island),
+                     adjust_PCA_plots(t_a_PCA_cryptic),
+                     
+                     # row 2: pcadapt
+                     out_pcas_rand$PCA_2d$par,
+                     out_pcas_island$PCA_2d$par,
+                     out_pcas_cryptic$PCA_2d$par,
+                     
+                     # row 3: of
+                     out_pcas_rand$PCA_1d$of,
+                     out_pcas_island$PCA_1d$of,
+                     out_pcas_cryptic$PCA_1d$of,
+                     
+                     ncol = 3, scale = .98, align = "hv", axis = "lrtb")
+
+cairo_pdf("../../results/Figure4t.pdf", width = 11.5, height = 11.5)
+Figure3
+dev.off()
+```
+
+
+```{r}
+TukeyHSD(aov(PC1 ~ pop, out_pcas_cryptic$PCA_2d$of$data))
+TukeyHSD(aov(PC2 ~ pop, out_pcas_cryptic$PCA_2d$of$data))
+summary(manova(cbind(PC1, PC2) ~ pop, out_pcas_cryptic$PCA_2d$of$data))
+```
+

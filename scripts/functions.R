@@ -398,3 +398,36 @@ basic_pca_bootstrapping <- function(x, rsp, quant = 0.05, nboots, store_pca = FA
                 null = list(values = res)))
   }
 }
+
+
+parse_boot_res <- function(files){
+  files <- lapply(files, readRDS)
+  
+  null <- purrr::map(files, "null_distribution")
+  null <- rbindlist(null)
+  
+  real <- files[[1]]$observed_values
+  
+  p <- get_p_values(real, null[,-1], c("greater", "greater", "greater", "greater", "greater", "greater"))
+  
+  plot_res <- function(real, null){
+    null$boot <- 1:nrow(null)
+    mnull <- data.table::melt(null, id.vars = "boot")
+    
+    mobs <- as.data.table(real)
+    suppressWarnings(mobs <- melt(mobs))
+    
+    p <- ggplot(mnull, aes(x = value)) +
+      geom_density() +
+      geom_vline(aes(xintercept = value), color = "red", data = mobs) +
+      facet_wrap(~variable, ncol = 1, scales = "free") +
+      theme_bw() +
+      xlab("Value") +
+      ylab("Density")
+    
+    return(p)
+    
+  }
+  
+  return(list(null = null, observed = real, p = p, plot = plot_res(real, null)))
+}
