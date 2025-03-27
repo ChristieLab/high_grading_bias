@@ -4,4 +4,4 @@ This project assesses high grading bias when high-FST SNPs are selected to visua
 Corresponding article [placeholder for doi]
 
 ## Data availability   
-All raw data and sample meta for emprical and simulated datasets used in this project can be found in [[data]], additionally, raw data for monarch SNPs can be accessed in the NCBI SRA under BioProject ID PRJNA848092. Raw datda for Kellet's whelks expression data (SI figure) can be assessed under project under project PRJNA1000198 (https://www.ncbi.nlm.nih.gov/sra/PRJNA1000198). Pink salmon SNP data (figure 5) under [placeholder for SRA LINK].
+All raw data and sample meta for emprical and simulated datasets used in this project can be found in [[data]], additionally, raw data for monarch SNPs can be accessed in the NCBI SRA under BioProject ID PRJNA848092. Raw datda for Kellet's whelks expression data (SI figure) can be assessed under project under project PRJNA1000198. Pink salmon SNP data (figure 5) under [placeholder for SRA LINK].
