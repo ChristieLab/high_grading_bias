@@ -89,11 +89,13 @@ d1[69, ]
 d2[69, ]
 df <- cbind(d1,d2)
 View(df)
+
 ## plot example PCA
 treatment <- c(rep('A', nrow(site.meta)/2), rep('B', nrow(site.meta)/2))
-
-
 iter <- 70 ## the 70th run is 69 in the above df
+
+iter <- 4 ## visualizing a different run for reviewer 2
+iter <- 10 ## visualizing a different run for reviewer 2
 set.seed(930 + iter)
 
 dds <- run_deseq(treatment)
@@ -104,24 +106,17 @@ dds[which(abs(res$log2FoldChange) > 2),]
 sig_cge_genes <- dds[which(res$padj < 0.05),]
 print(res[which(res$padj < 0.05),])
 
-
-
-
-
 top_genes <- get_top_loci(dds)
 sig_genes <- get_sig_genes(dds)
-
-
 
 fstat_pcas(top_genes)
 fstat_pcas(sig_genes)
 
-p3 <- plot_pcas(top_genes[[2]])
-p4 <- plot_pcas(sig_genes[[2]])
+plot_pcas(top_genes[[2]])
+plot_pcas(sig_genes[[2]])
 
 plot <- cowplot::plot_grid(p1, p3, p2, p4, labels="AUTO", nrow = 2, align = "hv")
 ggsave(plot, filename = "../../figures/SI_express_boot.svg", dpi = 400, width = 8, height = 6, units = "in")
-
 
 ## plot them all together 
 
@@ -152,6 +147,7 @@ run_deseq <- function(treatment){
   dds.site <- DESeq(dds.site)
   return(dds.site)
 }
+
 get_top_loci <- function(dds){
   res <- results(dds, alpha=0.05, pAdjustMethod = "BH", independentFiltering = TRUE)
   top_lfc2 <- dds[order(abs(res$log2FoldChange), decreasing = TRUE), ][1:1000,]
